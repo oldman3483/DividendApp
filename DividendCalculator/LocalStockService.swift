@@ -1,13 +1,14 @@
 //
-//  FinMindService.swift
+//  LocalStockService.swift
 //  DividendCalculator
 //
 //  Created by Heidie Lee on 2025/1/21.
 //
 
-import Foundation
+import SwiftUI
 
-class FinMindService {
+
+class LocalStockService {
     // 模擬資料庫
     private let mockStocks = [
         ("2330", "台積電", 2.75),

@@ -11,7 +11,7 @@ struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     
-    let finMindService = FinMindService()
+    let stockService = LocalStockService()
     @State private var searchResults: [SearchStock] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
@@ -19,7 +19,7 @@ struct SearchResultView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
+            VStack {
                 if isLoading {
                     ProgressView("搜尋中...")
                 } else if let errorMessage = errorMessage {
@@ -30,20 +30,21 @@ struct SearchResultView: View {
                 } else {
                     List {
                         ForEach(searchResults, id: \.symbol) { stock in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(stock.symbol)
-                                        .font(.headline)
-                                    Text(stock.name)
-                                        .foregroundColor(.gray)
-                                }
-                                Spacer()
-                                Image(systemName: "plus.circle")
-                                    .foregroundColor(.blue)
-                                    .onTapGesture {
-                                        addStockToPortfolio(stock)
+                            NavigationLink(destination: StockDetailView(stock: stock)) {
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(stock.symbol)
+                                            .font(.headline)
+                                        Text(stock.name)
+                                            .foregroundColor(.gray)
                                     }
-                                
+                                    Spacer()
+                                    Image(systemName: "plus.circle")
+                                        .foregroundColor(.blue)
+                                        .onTapGesture {
+                                            addStockToPortfolio(stock)
+                                        }
+                                }
                             }
                         }
                     }
@@ -58,29 +59,32 @@ struct SearchResultView: View {
                     }
                 }
             }
-        }
-        .task {
-            await searchStocks()
+            .task {
+                await searchStocks()
+            }
         }
     }
-    
-    private func searchStocks() async {
+}
+
+// 闊感中添加功能的方法
+extension SearchResultView {
+    func searchStocks() async {
         // 重置狀態
         isLoading = true
         errorMessage = nil
         searchResults = []
+                
+        let matchedStocks = await stockService.searchStocks(query: searchText)
         
-        let matchedStocks = await finMindService.searchStocks(query: searchText)
-            
-            await MainActor.run {
-                searchResults = matchedStocks
-                isLoading = false
-            }
+        await MainActor.run {
+            searchResults = matchedStocks
+            isLoading = false
         }
+    }
     
-    private func addStockToPortfolio(_ stock: SearchStock) {
+    func addStockToPortfolio(_ stock: SearchStock) {
         Task {
-            if let dividend = await finMindService.getTaiwanStockDividend(symbol: stock.symbol) {
+            if let dividend = await stockService.getTaiwanStockDividend(symbol: stock.symbol) {
                 let newStock = Stock(
                     symbol: stock.symbol,
                     name: stock.name,

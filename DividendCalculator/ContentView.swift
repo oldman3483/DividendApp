@@ -8,107 +8,50 @@
 import SwiftUI
 
 struct ContentView: View {
+   
     @State private var stocks: [Stock] = []
+    @State private var watchlist: [WatchStock] = []
     @State private var searchText: String = ""
     @State private var isEditing = false
-    let stockService = StockService()
+    let stockService = LocalStockService()
+    
+
+    
     
     var body: some View {
         ZStack(alignment: .top) {
-            SearchBarView(searchText:  $searchText, stocks: $stocks)
+            SearchBarView(searchText: $searchText, stocks: $stocks)
                 .zIndex(1)
+            
             TabView {
-                // 第一頁：投資組合
+                // 第一頁：庫存股
                 NavigationStack {
-                    List {
-                        ForEach(stocks) { stock in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(stock.symbol)
-                                        .font(.headline)
-                                    Text(stock.name)
-                                        .foregroundColor(.gray)
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing) {
-                                    Text("持股：\(stock.shares)")
-                                    Text("股利：\(String(format: "%.2f", stock.dividendPerShare))")
-                                    Text("年化：\(String(format: "%.0f", stock.calculateAnnualDividend()))")
-                                }
-                                .font(.subheadline)
-                            }
-                        }
-                        .onDelete { offsets in
-                            stocks.remove(atOffsets: offsets)
-                        }
-                        .onMove { from, to in
-                            stocks.move(fromOffsets: from, toOffset: to)
-                        } // 新增移動功能
-                    }
-                    .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
-                    // 控制編輯模式
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Text("投資組合")
-                                .font(.system(size: 40, weight: .bold))
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button(action: {
-                                isEditing.toggle()
-                            }) {
-                                Text(isEditing ? "完成" : "編輯")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
+                    StockPortfolioView(stocks: $stocks, isEditing: $isEditing)
                 }
-                .padding(.top, 65) // 為搜尋框留出空間
+                .padding(.top, 65)
                 .tabItem {
-                    Label("投資組合", systemImage: "chart.pie.fill")
+                    Label("庫存股", systemImage: "chart.pie.fill")
                 }
-                // 第二頁觀察清單
+                
+                // 第二頁：觀察清單
                 NavigationStack {
-                    List {
-                        
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Text("觀察清單")
-                                .font(.system(size: 40, weight: .bold))
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button(action: {
-                                isEditing.toggle()
-                            })  {
-                                Text(isEditing ? "完成" : "編輯")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
+                    WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
                 }
                 .padding(.top, 65)
                 .tabItem {
                     Label("觀察清單", systemImage: "star.fill")
                 }
-                //第三頁投資總覽
+                
+                // 第三頁：投資總覽
                 NavigationStack {
-                    List {
-                        
-                    }
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            Text("投資總覽")
-                                .font(.system(size: 40, weight: .bold))
-                        }
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button(action: {
-                                isEditing.toggle()
-                            })  {
-                                Text(isEditing ? "完成" : "編輯")
-                                    .foregroundColor(.blue)
+                    Text("投資總覽")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .principal) {
+                                Text("投資總覽")
+                                    .font(.system(size: 40, weight: .bold))
                             }
                         }
-                    }
                 }
                 .padding(.top, 65)
                 .tabItem {
@@ -116,14 +59,40 @@ struct ContentView: View {
                 }
             }
         }
+        .onAppear{
+            loadData()
+        }
+        .onChange(of: stocks) { oldValue, newValue in
+            saveData()
+        }
+        .onChange(of: watchlist) { oldValue, newValue in
+            saveData()
+        }
     }
-}
+    // 資料儲存和讀取的方法放在這裡
+    private func saveData() {
+        if let encodedStocks = try? JSONEncoder().encode(stocks) {
+            UserDefaults.standard.set(encodedStocks, forKey: "stocks")
+        }
+        
+        if let encodedWatchlist = try? JSONEncoder().encode(watchlist) {
+            UserDefaults.standard.set(encodedWatchlist, forKey: "watchlist")
+        }
+    }
     
-    
-    
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    private func loadData() {
+        if let savedStocks = UserDefaults.standard.data(forKey: "stocks"),
+            let decodedStocks = try? JSONDecoder().decode([Stock].self, from: savedStocks) {
+            stocks = decodedStocks
+        }
+            
+        if let savedWatchlist = UserDefaults.standard.data(forKey: "watchlist"),
+            let decodedWatchlist = try? JSONDecoder().decode([WatchStock].self, from: savedWatchlist) {
+            watchlist = decodedWatchlist
+        }
     }
 }
 
+#Preview {
+    ContentView()
+}

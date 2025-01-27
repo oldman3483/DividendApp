@@ -12,6 +12,13 @@ struct SearchBarView: View {
     @Binding var stocks: [Stock]
     @State private var showingSearchResult = false
     
+    // 加入預覽用的初始化器
+    init(searchText: Binding<String>, stocks: Binding<[Stock]>) {
+        self._searchText = searchText
+        self._stocks = stocks
+    }
+    
+    
     
     var body: some View {
         HStack {
