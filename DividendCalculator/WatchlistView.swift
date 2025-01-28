@@ -170,27 +170,33 @@ struct WatchlistView: View {
     
     // 刪除當前清單
     private func deleteCurrentList() {
+        guard listNames.count > 1 else { return }
+        
         // 刪除該清單中的所有股票
         watchlist.removeAll { $0.listNames == selectedList }
         
         // 刪除清單名稱
-        var names = listNames
-        listNames.remove(at: selectedList)
-        self.listNames = names
-        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+        var updatedNames = listNames
+        updatedNames.remove(at: selectedList)
+        self.listNames = updatedNames
         
-        // 更新其他股票的 listNames
-        watchlist = watchlist.map { stock in
-            if stock.listNames > selectedList {
-                return WatchStock(
-                    id: stock.id,
-                    symbol: stock.symbol,
-                    name: stock.name,
-                    addedDate: stock.addedDate,
-                    listIndex: stock.listNames - 1
+        // 儲存更新後的清單名稱到 UserDefaults
+
+        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+        UserDefaults.standard.synchronize()
+        
+        for i in 0..<watchlist.count {
+            if watchlist[i].listNames > selectedList {
+                let updatedStock = WatchStock(
+                    id: watchlist[i].id,
+                    symbol: watchlist[i].symbol,
+                    name: watchlist[i].name,
+                    addedDate: watchlist[i].addedDate,
+                    listIndex: watchlist[i].listNames - 1
                 )
+                watchlist[i] = updatedStock
+        
             }
-            return stock
         }
         
         // 如果刪除的是最後一個清單，選擇前一個清單

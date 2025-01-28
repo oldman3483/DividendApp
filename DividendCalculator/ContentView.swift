@@ -93,6 +93,7 @@ struct ContentView: View {
         
         if let encodedWatchlist = try? JSONEncoder().encode(watchlist) {
             UserDefaults.standard.set(encodedWatchlist, forKey: "watchlist")
+            UserDefaults.standard.synchronize()
         }
     }
     
