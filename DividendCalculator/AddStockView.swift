@@ -12,73 +12,70 @@ struct AddStockView: View {
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
     
-    @State private var symbol: String = ""
-    @State private var name: String = ""
+    let initialSymbol: String
+    let initialName: String
+    
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
     @State private var frequency: Int = 4
-    @State private var showAlert = false
-    @State private var showSuggestions = false
-    @State private var suggestions: [(symbol: String, name: String)] = []
     @State private var selectedDestination = "庫存股"
     @State private var errorMessage: String = ""
     
-    let destinations = ["庫存股", "自選清單1", "自選清單2", "自選清單3", "自選清單4", "自選清單5"]
     private let localStockService = LocalStockService()
     
+    // 新增一個帶初始值的建構函式
+    
+    init(
+        stocks: Binding<[Stock]>,
+        watchlist: Binding<[WatchStock]>,
+        initialSymbol: String = "",
+        initialName: String = ""
+        
+    ) {
+        self._stocks = stocks
+        self._watchlist = watchlist
+        self.initialSymbol = initialSymbol
+        self.initialName = initialName
+        
+ 
+    }
+    
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
+                // 第一個區段：股票資訊
                 Section(header: Text("股票資訊")) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        TextField("股票代號", text: $symbol)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .onChange(of: symbol) { oldValue, newValue in
-                                if !newValue.isEmpty {
-                                    Task {
-                                        await searchStocks(query: newValue)
-                                    }
-                                } else {
-                                    suggestions = []
-                                    showSuggestions = false
-                                }
-                            }
-                        
-                        if showSuggestions && !suggestions.isEmpty {
-                            ScrollView {
-                                VStack(alignment: .leading, spacing: 10) {
-                                    ForEach(suggestions, id: \.symbol) { stock in
-                                        Button(action: {
-                                            symbol = stock.symbol
-                                            name = stock.name
-                                            suggestions = []
-                                            showSuggestions = false
-                                        }) {
-                                            HStack {
-                                                Text(stock.symbol)
-                                                    .font(.headline)
-                                                Text(stock.name)
-                                                    .foregroundColor(.gray)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            .frame(maxHeight: 200)
+                    HStack{
+                        Text ("股票代號：")
+                        Text (initialSymbol)
+                            .foregroundColor(.blue)
+                    }
+                    HStack{
+                        Text ("公司名稱：")
+                        Text (initialName)
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                // 第二個區段：選擇目的地
+                Section(header: Text("選擇目的地")) {
+                    Picker("新增至", selection: $selectedDestination) {
+                        Text("庫存股").tag("庫存股")
+                        ForEach(0...4, id: \.self) { index in
+                            Text("自選清單\(index + 1)").tag("自選清單\(index + 1)")
                         }
-                        
-                        if !name.isEmpty {
-                            Text(name)
-                                .foregroundColor(.gray)
-                        }
-                        
+                    }
+                }
+                
+                // 第三個區段：只在選擇庫存股時顯示
+                if selectedDestination == "庫存股" {
+                    Section(header: Text("庫存資訊")) {
                         TextField("持股數量", text: $shares)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.numberPad)
                         
                         TextField("每股股利", text: $dividendPerShare)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
                             .keyboardType(.decimalPad)
+                            .disabled(true)
                         
                         Picker("發放頻率", selection: $frequency) {
                             Text("年配").tag(1)
@@ -86,37 +83,6 @@ struct AddStockView: View {
                             Text("季配").tag(4)
                             Text("月配").tag(12)
                         }
-                        
-                        Picker("新增至", selection: $selectedDestination) {
-                            ForEach(destinations, id: \.self) { destination in
-                                Text(destination).tag(destination)
-                            }
-                        }
-                    }
-                }
-                // 新增目的地選擇區段
-                Section(header: Text("新增至")) {
-                    Picker("篩選至", selection: $selectedDestination) {
-                        Text("庫存股").tag("庫存股")
-                        ForEach(1...5, id: \.self) { index in
-                            Text("自選清單\(index)").tag("自選清單\(index)")
-                        }
-                    }
-                }
-                
-                // 只在選擇庫存股時顯示的區段
-                if selectedDestination == "庫存股" {
-                    Section(header: Text("庫存資訊")) {
-                        TextField("持股數量", text: $shares)
-                            .keyboardType(.numberPad)
-                        TextField("持股數量", text: $shares)
-                            .keyboardType(.numberPad)
-                            .disabled(true)
-                        Picker("發放頻率", selection: $frequency) {
-                            Text("年配").tag(1)
-                            Text("半年配").tag(2)
-                            Text("年配").tag(4)
-                            Text("年配").tag(1)
                     }
                 }
                 
@@ -137,69 +103,77 @@ struct AddStockView: View {
                 }
             )
         }
-    }
-    
-    func searchStocks(query: String) async {
-        let matchedStocks = await localStockService.searchStocks(query: query)
-        
-        await MainActor.run {
-            suggestions = matchedStocks.map { (symbol: $0.symbol, name: $0.name) }
-            showSuggestions = !suggestions.isEmpty
+        .task {
+            if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
+                dividendPerShare = String(format: "%.2f", dividend)
+            }
         }
     }
     
-    func addStock() {
+    
+    
+    private func addStock() {
         // 重置錯誤訊息
         errorMessage = ""
         
-        // 驗證輸入
-        guard !symbol.isEmpty else {
-            errorMessage = "請輸入股票代號"
-            return
-        }
         
-        guard !name.isEmpty else {
-            errorMessage = "請選擇股票"
-            return
-        }
-        
-        guard let sharesInt = Int(shares), sharesInt > 0 else {
-            errorMessage = "請輸入有效的持股數量"
-            return
-        }
-        
-        guard let dividendDouble = Double(dividendPerShare), dividendDouble >= 0 else {
-            errorMessage = "請輸入有效的股利金額"
-            return
-        }
-        
-        let currentYear = Calendar.current.component(.year, from: Date())
-        
+        // 根據選擇的目的地執行不同的驗證和新增邏輯
         if selectedDestination == "庫存股" {
+            // 驗證庫存股特有的欄位
+            guard let sharesInt = Int(shares), sharesInt > 0 else {
+                errorMessage = "請輸入有效的持股數量"
+                return
+            }
+            
+            guard let dividendDouble = Double(dividendPerShare), dividendDouble >= 0 else {
+                errorMessage = "請輸入有效的股利金額"
+                return
+            }
+            
             // 新增到庫存股
             let stock = Stock(
-                symbol: symbol,
-                name: name,
+                id: UUID(),
+                symbol: initialSymbol,
+                name: initialName,
                 shares: sharesInt,
                 dividendPerShare: dividendDouble,
-                dividendYear: currentYear,
+                dividendYear: Calendar.current.component(.year, from: Date()),
                 isHistorical: false,
                 frequency: frequency
             )
             stocks.append(stock)
         } else {
             // 新增到觀察清單
-            let listIndex = destinations.firstIndex(of: selectedDestination)! - 1
-            let watchStock = WatchStock(
-                symbol: symbol,
-                name: name,
-                addedDate: Date(),
-                listIndex: listIndex
-            )
-            watchlist.append(watchStock)
+            let listNumberString = selectedDestination.replacingOccurrences(of: "自選清單", with: "")
+            guard let listNumber = Int(listNumberString) else {
+                errorMessage = "無效的清單編號"
+                return
+            }
+            
+            
+            // 檢查是否已存在於該觀察清單
+            if !watchlist.contains(
+                where: { $0.symbol == initialSymbol && $0.listNames == (listNumber - 1) }) {
+                let watchStock = WatchStock(
+                    symbol: initialSymbol,
+                    name: initialName,
+                    addedDate: Date(),
+                    listIndex: listNumber - 1 // 因為索引從0開始
+                )
+                watchlist.append(watchStock)
+            } else {
+                errorMessage = "此股票已在該觀察清單中"
+                return
+            }
         }
         
-        // 關閉視圖
+        // 完成後關閉視圖
         dismiss()
+        }
     }
+
+
+
+#Preview {
+    ContentView()
 }

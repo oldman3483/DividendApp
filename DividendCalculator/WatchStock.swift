@@ -13,14 +13,14 @@ struct WatchStock: Identifiable, Codable, Equatable {
     let symbol: String
     let name: String
     let addedDate: Date
-    let listIndex: Int  // 所屬自選清單編號
+    let listNames: Int // 所屬自選清單編號
     
     init(id: UUID = UUID(), symbol: String, name: String, addedDate: Date = Date(), listIndex: Int) {
         self.id = id
         self.symbol = symbol
         self.name = name
         self.addedDate = addedDate
-        self.listIndex = listIndex
+        self.listNames = listIndex
     
     
     }

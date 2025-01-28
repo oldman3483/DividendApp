@@ -10,12 +10,15 @@ import SwiftUI
 struct SearchBarView: View {
     @Binding var searchText: String
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+
     @State private var showingSearchResult = false
     
     // 加入預覽用的初始化器
-    init(searchText: Binding<String>, stocks: Binding<[Stock]>) {
+    init(searchText: Binding<String>, stocks: Binding<[Stock]>,watchlist: Binding<[WatchStock]>) {
         self._searchText = searchText
         self._stocks = stocks
+        self._watchlist  = watchlist
     }
     
     
@@ -44,7 +47,11 @@ struct SearchBarView: View {
         }
         .padding()
         .sheet(isPresented: $showingSearchResult) {
-            SearchResultView(stocks: $stocks, searchText: searchText)
+            SearchResultView(
+                stocks: $stocks,
+                watchlist: $watchlist,
+                searchText: searchText
+            )
         }
     }
 }

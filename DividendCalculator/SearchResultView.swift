@@ -10,11 +10,16 @@ import SwiftUI
 struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
     
     let stockService = LocalStockService()
     @State private var searchResults: [SearchStock] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
+    @State private var showingAddStockView = false
+    @State private var selectedSymbol: String = ""
+    @State private var selectedName: String = ""
+    
     let searchText: String
     
     var body: some View {
@@ -30,24 +35,36 @@ struct SearchResultView: View {
                 } else {
                     List {
                         ForEach(searchResults, id: \.symbol) { stock in
-                            NavigationLink(destination: StockDetailView(stock: stock)) {
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(stock.symbol)
-                                            .font(.headline)
-                                        Text(stock.name)
-                                            .foregroundColor(.gray)
-                                    }
-                                    Spacer()
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(stock.symbol)
+                                        .font(.headline)
+                                    Text(stock.name)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                Button(action: {
+                                    print("選擇股票: \(stock.symbol) \(stock.name)")
+                                    selectedSymbol = stock.symbol
+                                    selectedName = stock.name
+                                    showingAddStockView = true
+                                }) {
                                     Image(systemName: "plus.circle")
                                         .foregroundColor(.blue)
-                                        .onTapGesture {
-                                            addStockToPortfolio(stock)
-                                        }
                                 }
                             }
                         }
                     }
+                }
+            }
+            .sheet(isPresented: $showingAddStockView) {
+                NavigationStack{
+                    AddStockView(
+                        stocks: $stocks,
+                        watchlist: $watchlist,
+                        initialSymbol: selectedSymbol,
+                        initialName: selectedName
+                    )
                 }
             }
             .navigationTitle("搜尋結果")
@@ -62,18 +79,20 @@ struct SearchResultView: View {
             .task {
                 await searchStocks()
             }
+            .onChange(of: showingAddStockView) { newValue in
+                print("showingAddStockView: \(newValue)") // 添加調試輸出
+                print("selectedSymbol: \(selectedSymbol)") // 添加調試輸出
+                print("selectedName: \(selectedName)") // 添加調試輸出
+                
+            }
         }
     }
-}
-
-// 闊感中添加功能的方法
-extension SearchResultView {
+    
     func searchStocks() async {
-        // 重置狀態
         isLoading = true
         errorMessage = nil
         searchResults = []
-                
+        
         let matchedStocks = await stockService.searchStocks(query: searchText)
         
         await MainActor.run {
@@ -81,29 +100,11 @@ extension SearchResultView {
             isLoading = false
         }
     }
-    
-    func addStockToPortfolio(_ stock: SearchStock) {
-        Task {
-            if let dividend = await stockService.getTaiwanStockDividend(symbol: stock.symbol) {
-                let newStock = Stock(
-                    symbol: stock.symbol,
-                    name: stock.name,
-                    shares: 0, // 用戶需要手動輸入
-                    dividendPerShare: dividend,
-                    dividendYear: Calendar.current.component(.year, from: Date()),
-                    isHistorical: false,
-                    frequency: 1 // 預設為年配
-                )
-                
-                await MainActor.run {
-                    stocks.append(newStock)
-                    dismiss()
-                }
-            } else {
-                await MainActor.run {
-                    errorMessage = "無法獲取股利資訊，請手動輸入"
-                }
-            }
-        }
-    }
 }
+
+#Preview {
+    ContentView()
+}
+
+
+
