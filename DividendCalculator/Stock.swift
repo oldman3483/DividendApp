@@ -16,6 +16,8 @@ struct Stock: Identifiable, Codable, Equatable {
     let dividendYear: Int    // 股利年度
     let isHistorical: Bool   // 是否為歷史股利
     var frequency: Int       // 發放頻率（1=年配, 2=半年配, 4=季配, 12=月配）
+    var purchaseDate: Date   // 新增：購買日期
+
     
     // 为 Codable 协议提供自定义编码和解码
     enum CodingKeys: String, CodingKey {
@@ -27,6 +29,7 @@ struct Stock: Identifiable, Codable, Equatable {
         case dividendYear
         case isHistorical
         case frequency
+        case purchaseDate
     }
     
     // 计算年化股利
@@ -45,6 +48,7 @@ struct Stock: Identifiable, Codable, Equatable {
         dividendYear = try container.decode(Int.self, forKey: .dividendYear)
         isHistorical = try container.decode(Bool.self, forKey: .isHistorical)
         frequency = try container.decode(Int.self, forKey: .frequency)
+        purchaseDate = try container.decode(Date.self, forKey: .purchaseDate)
     }
     
     // 自定义编码方法
@@ -58,6 +62,7 @@ struct Stock: Identifiable, Codable, Equatable {
         try container.encode(dividendYear, forKey: .dividendYear)
         try container.encode(isHistorical, forKey: .isHistorical)
         try container.encode(frequency, forKey: .frequency)
+        try container.encode(purchaseDate, forKey: .purchaseDate)
     }
     
     // 初始化方法
@@ -69,7 +74,8 @@ struct Stock: Identifiable, Codable, Equatable {
         dividendPerShare: Double,
         dividendYear: Int,
         isHistorical: Bool = false,
-        frequency: Int = 1
+        frequency: Int = 1,
+        purchaseDate: Date = Date()
     ) {
         self.id = id
         self.symbol = symbol
@@ -79,6 +85,7 @@ struct Stock: Identifiable, Codable, Equatable {
         self.dividendYear = dividendYear
         self.isHistorical = isHistorical
         self.frequency = frequency
+        self.purchaseDate = purchaseDate
     }
     static func == (lhs: Stock, rhs: Stock) -> Bool {
         return lhs.id == rhs.id

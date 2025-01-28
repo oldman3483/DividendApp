@@ -20,6 +20,8 @@ struct AddStockView: View {
     @State private var frequency: Int?
     @State private var selectedDestination = "庫存股"
     @State private var errorMessage: String = ""
+    @State private var purchaseDate = Date()
+    @State private var showDatePicker = false
     
     private let localStockService = LocalStockService()
     
@@ -91,6 +93,12 @@ struct AddStockView: View {
                             Text("季配").tag(4)
                             Text("月配").tag(12)
                         }
+                        DatePicker(
+                            "買入日期",
+                            selection: $purchaseDate,
+                            displayedComponents: .date
+                        )
+                        .datePickerStyle(.compact)
                     }
                 }
                 
@@ -157,7 +165,8 @@ struct AddStockView: View {
                 dividendPerShare: dividendDouble,
                 dividendYear: Calendar.current.component(.year, from: Date()),
                 isHistorical: false,
-                frequency: unwrappedFrequency
+                frequency: unwrappedFrequency,
+                purchaseDate: purchaseDate
             )
             stocks.append(stock)
         } else {

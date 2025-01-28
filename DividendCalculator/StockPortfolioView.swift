@@ -11,6 +11,13 @@ struct StockPortfolioView: View {
     @Binding var stocks: [Stock]
     @Binding var isEditing: Bool
     
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.locale = Locale(identifier: "zh_TW")
+        return formatter
+    }()
+    
     var body: some View {
         List {
             ForEach(stocks) { stock in
@@ -19,6 +26,9 @@ struct StockPortfolioView: View {
                         Text(stock.symbol)
                             .font(.headline)
                         Text(stock.name)
+                            .foregroundColor(.gray)
+                        Text("買入日期：\(dateFormatter.string(from: stock.purchaseDate))")
+                            .font(.caption)
                             .foregroundColor(.gray)
                     }
                     Spacer()
