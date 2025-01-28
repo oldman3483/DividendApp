@@ -23,6 +23,11 @@ struct AddStockView: View {
     
     private let localStockService = LocalStockService()
     
+    // 新增取得觀察清單名稱的計算屬性
+    private var watchlistNames: [String] {
+        UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
+        }
+    
     // 新增一個帶初始值的建構函式
     
     init(
@@ -58,11 +63,11 @@ struct AddStockView: View {
                 }
                 
                 // 第二個區段：選擇目的地
-                Section(header: Text("選擇目的地")) {
+                Section(header: Text("存入清單")) {
                     Picker("新增至", selection: $selectedDestination) {
                         Text("庫存股").tag("庫存股")
-                        ForEach(0...4, id: \.self) { index in
-                            Text("自選清單\(index + 1)").tag("自選清單\(index + 1)")
+                        ForEach(watchlistNames, id: \.self) { name in
+                            Text(name).tag(name)
                         }
                     }
                 }
@@ -144,21 +149,17 @@ struct AddStockView: View {
             stocks.append(stock)
         } else {
             // 新增到觀察清單
-            let listNumberString = selectedDestination.replacingOccurrences(of: "自選清單", with: "")
-            guard let listNumber = Int(listNumberString) else {
-                errorMessage = "無效的清單編號"
-                return
-            }
+            let listIndex = watchlistNames.firstIndex(of: selectedDestination) ?? 0
             
             
             // 檢查是否已存在於該觀察清單
             if !watchlist.contains(
-                where: { $0.symbol == initialSymbol && $0.listNames == (listNumber - 1) }) {
+                where: { $0.symbol == initialSymbol && $0.listNames == listIndex }) {
                 let watchStock = WatchStock(
                     symbol: initialSymbol,
                     name: initialName,
                     addedDate: Date(),
-                    listIndex: listNumber - 1 // 因為索引從0開始
+                    listIndex: listIndex
                 )
                 watchlist.append(watchStock)
             } else {

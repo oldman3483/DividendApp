@@ -100,6 +100,8 @@ struct WatchlistView: View {
             NavigationStack {
                 Form {
                     TextField("清單名稱", text: $newListName)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
                 }
                 .navigationTitle("新增觀察清單")
                 .navigationBarItems(
@@ -116,6 +118,8 @@ struct WatchlistView: View {
         }
         .alert("重新命名清單", isPresented: $showingEditList) {
             TextField("新名稱", text: $newListName)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
             Button("取消", role: .cancel) {
                 newListName = ""
             }
@@ -147,6 +151,7 @@ struct WatchlistView: View {
         var names = listNames
         names.append(newListName)
         self.listNames = names
+        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
         selectedList = names.count - 1
         showingAddList = false
         newListName = ""
@@ -158,6 +163,7 @@ struct WatchlistView: View {
             var names = listNames
             names[selectedList] = newListName
             self.listNames = names
+            UserDefaults.standard.set(listNames, forKey: "watchlistNames")
             newListName = ""
         }
     }
@@ -168,7 +174,9 @@ struct WatchlistView: View {
         watchlist.removeAll { $0.listNames == selectedList }
         
         // 刪除清單名稱
+        var names = listNames
         listNames.remove(at: selectedList)
+        self.listNames = names
         UserDefaults.standard.set(listNames, forKey: "watchlistNames")
         
         // 更新其他股票的 listNames
