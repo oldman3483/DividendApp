@@ -17,7 +17,7 @@ struct AddStockView: View {
     
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
-    @State private var frequency: Int = 4
+    @State private var frequency: Int?
     @State private var selectedDestination = "庫存股"
     @State private var errorMessage: String = ""
     
@@ -82,7 +82,10 @@ struct AddStockView: View {
                             .keyboardType(.decimalPad)
                             .disabled(true)
                         
-                        Picker("發放頻率", selection: $frequency) {
+                        Picker("發放頻率", selection: Binding(
+                            get: { self.frequency ?? 1 },
+                            set: { self.frequency = $0 }
+                        )) {
                             Text("年配").tag(1)
                             Text("半年配").tag(2)
                             Text("季配").tag(4)
@@ -109,8 +112,13 @@ struct AddStockView: View {
             )
         }
         .task {
+
+
             if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
                 dividendPerShare = String(format: "%.2f", dividend)
+            }
+            if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
+                    frequency = freq
             }
         }
     }
@@ -135,6 +143,11 @@ struct AddStockView: View {
                 return
             }
             
+            guard let unwrappedFrequency = frequency else {
+                errorMessage = "無法取得發放頻率"
+                return
+            }
+            
             // 新增到庫存股
             let stock = Stock(
                 id: UUID(),
@@ -144,7 +157,7 @@ struct AddStockView: View {
                 dividendPerShare: dividendDouble,
                 dividendYear: Calendar.current.component(.year, from: Date()),
                 isHistorical: false,
-                frequency: frequency
+                frequency: unwrappedFrequency
             )
             stocks.append(stock)
         } else {
