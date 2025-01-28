@@ -52,7 +52,7 @@ struct ContentView: View {
         NavigationStack {
             StockPortfolioView(stocks: $stocks, isEditing: $isEditing)
         }
-        .padding(.top, 65)
+        .padding(.top, 69)
         .tabItem {
             Label("庫存股", systemImage: "chart.pie.fill")
         }

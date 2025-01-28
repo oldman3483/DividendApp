@@ -195,8 +195,6 @@ struct AddStockView: View {
         }
     }
 
-
-
 #Preview {
     ContentView()
 }
