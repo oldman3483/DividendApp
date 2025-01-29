@@ -4,32 +4,56 @@
 //
 //  Created by Heidie Lee on 2025/1/24.
 //
+//
+//  StockPortfolioView.swift
+//  DividendCalculator
+//
+//  Created by Heidie Lee on 2025/1/24.
+//
 
 import SwiftUI
 
+// 自定義修飾符：處理編輯模式的視覺效果
+struct EditModeViewModifier: ViewModifier {
+    let isEditing: Bool
+    
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background(Color.white)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isEditing ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1)
+            )
+            .shadow(
+                color: isEditing ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1),
+                radius: isEditing ? 8 : 2,
+                x: 0,
+                y: isEditing ? 4 : 1
+            )
+            .animation(.easeInOut(duration: 0.3), value: isEditing)
+    }
+}
+
 struct StockPortfolioView: View {
+    // MARK: - 屬性
     @Binding var stocks: [Stock]
     @Binding var isEditing: Bool
     @State private var selectedStock: WeightedStockInfo?
     @State private var showingDetail = false
     
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "zh_TW")
-        return formatter
-    }()
-    
-    // 計算合併後的股票資訊
+    // MARK: - 計算屬性
     private var groupedStocks: [WeightedStockInfo] {
         stocks.calculateWeightedAverage()
     }
     
-    // 計算總年化股利
     private var totalAnnualDividend: Double {
         groupedStocks.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
     }
     
+    // MARK: - 視圖主體
     var body: some View {
         List {
             // 總覽區塊
@@ -48,25 +72,46 @@ struct StockPortfolioView: View {
                         .foregroundColor(.green)
                 }
             }
+            .listRowBackground(Color.clear)
             
             // 股票列表區塊
             Section {
                 ForEach(groupedStocks) { stockInfo in
-                    Button(action: {
-                        selectedStock = stockInfo
-                        showingDetail = true
-                    }) {
-                        StockSummaryRow(stockInfo: stockInfo)
+                    Group {
+                        if isEditing {
+                            // 編輯模式視圖
+                            StockSummaryRow(stockInfo: stockInfo, isEditing: true)
+                        } else {
+                            // 一般模式視圖
+                            Button(action: {
+                                selectedStock = stockInfo
+                                showingDetail = true
+                            }) {
+                                StockSummaryRow(stockInfo: stockInfo, isEditing: false)
+                            }
+                            .foregroundColor(.primary)
+                        }
                     }
-                    .foregroundColor(.primary)
+                    .modifier(EditModeViewModifier(isEditing: isEditing))
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
+                .onDelete(perform: isEditing ? deleteStocks : nil)
+                .onMove(perform: isEditing ? moveStocks : nil)
             }
+            .listRowBackground(Color.clear)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("庫存股")
                     .font(.system(size: 40, weight: .bold))
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(isEditing ? "完成" : "編輯") {
+                    withAnimation {
+                        isEditing.toggle()
+                    }
+                }
             }
         }
         .sheet(isPresented: $showingDetail) {
@@ -75,150 +120,90 @@ struct StockPortfolioView: View {
             }
         }
     }
+    
+    // MARK: - 輔助方法
+    private func deleteStocks(at offsets: IndexSet) {
+        let stocksToDelete = offsets.map { groupedStocks[$0] }
+        stocks.removeAll { stock in
+            stocksToDelete.contains { $0.symbol == stock.symbol }
+        }
+    }
+    
+    private func moveStocks(from source: IndexSet, to destination: Int) {
+        var sortOrder = groupedStocks.map { $0.symbol }
+        sortOrder.move(fromOffsets: source, toOffset: destination)
+        let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
+        stocks.sort { (stock1, stock2) in
+            let index1 = orderDict[stock1.symbol] ?? 0
+            let index2 = orderDict[stock2.symbol] ?? 0
+            return index1 < index2
+        }
+    }
 }
 
-// 股票摘要行
+// MARK: - 股票摘要行視圖
 struct StockSummaryRow: View {
     let stockInfo: WeightedStockInfo
+    let isEditing: Bool
+
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 第一行：股票代號和名稱
-            HStack {
-                Text(stockInfo.symbol)
-                    .font(.headline)
-                Text(stockInfo.name)
+        HStack(spacing: 12) {
+            if isEditing {
+                Image(systemName: "line.3.horizontal")
                     .foregroundColor(.gray)
-                Spacer()
-                Text("\(stockInfo.totalShares)股")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 16, weight: .regular))
             }
             
-            // 第二行：股利資訊
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("加權股利")
-                        .font(.caption)
+            VStack(alignment: .leading, spacing: 8) {
+                // 第一行：股票代號和名稱
+                HStack {
+                    Text(stockInfo.symbol)
+                        .font(.headline)
+                    Text(stockInfo.name)
                         .foregroundColor(.gray)
-                    Text("$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))")
+                    Spacer()
+                    Text("\(stockInfo.totalShares)股")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
                 }
                 
-                Spacer()
-                
-                VStack(alignment: .trailing) {
-                    Text("年化股利")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Text("$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))")
-                        .foregroundColor(.green)
+                // 第二行：股利信息
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("加權股利")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))")
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Text("年化股利")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))")
+                            .foregroundColor(.green)
+                    }
                 }
+            }
+            // 非編輯模式顯示箭頭，編輯模式顯示編輯圖示
+            if !isEditing {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.system(size: 14, weight: .semibold))
+            } else {
+                Image(systemName: "pencil")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 14, weight: .semibold))
             }
         }
         .padding(.vertical, 4)
     }
 }
 
-// 股票詳細資訊視圖
-struct StockDetailView: View {
-    @Environment(\.dismiss) private var dismiss
-    let stockInfo: WeightedStockInfo
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                // 彙總資訊區塊
-                Section("彙總資訊") {
-                    SummaryRow(title: "總持股數", value: "\(stockInfo.totalShares)股")
-                    SummaryRow(
-                        title: "加權平均股利",
-                        value: "$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))"
-                    )
-                    if let avgPrice = stockInfo.weightedPurchasePrice {
-                        SummaryRow(
-                            title: "加權平均成本",
-                            value: "$\(String(format: "%.2f", avgPrice))"
-                        )
-                    }
-                    SummaryRow(
-                        title: "預估年化股利",
-                        value: "$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))",
-                        valueColor: .green
-                    )
-                    if let totalValue = stockInfo.calculateTotalValue() {
-                        SummaryRow(
-                            title: "總市值",
-                            value: "$\(String(format: "%.0f", totalValue))"
-                        )
-                    }
-                }
-                
-                // 詳細持股資訊區塊
-                Section("詳細持股") {
-                    ForEach(stockInfo.details) { stock in
-                        StockDetailRow(stock: stock)
-                    }
-                }
-            }
-            .navigationTitle("\(stockInfo.symbol) \(stockInfo.name)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
-                        dismiss()
-                    }
-                }
-            }
-        }
-    }
+#Preview {
+    ContentView()
 }
 
-// 彙總資訊行元件
-struct SummaryRow: View {
-    let title: String
-    let value: String
-    var valueColor: Color = .primary
-    
-    var body: some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value)
-                .foregroundColor(valueColor)
-        }
-    }
-}
-
-// 詳細持股資訊行元件
-struct StockDetailRow: View {
-    let stock: Stock
-    
-    private let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.locale = Locale(identifier: "zh_TW")
-        return formatter
-    }()
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("買入日期：\(dateFormatter.string(from: stock.purchaseDate))")
-            
-            HStack {
-                Text("持股數量：\(stock.shares)股")
-                Spacer()
-                if let price = stock.purchasePrice {
-                    Text("價格：$\(String(format: "%.2f", price))")
-                }
-            }
-            
-            HStack {
-                Text("配息：$\(String(format: "%.2f", stock.dividendPerShare))")
-                Spacer()
-                Text("年化：$\(String(format: "%.0f", stock.calculateAnnualDividend()))")
-                    .foregroundColor(.green)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}

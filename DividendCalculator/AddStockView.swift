@@ -21,14 +21,15 @@ struct AddStockView: View {
     @State private var selectedDestination = "庫存股"
     @State private var errorMessage: String = ""
     @State private var purchaseDate = Date()
-    @State private var showDatePicker = false
+    @State private var purchasePrice: String = ""
+    @State private var isLoadingPrice: Bool = false
     
     private let localStockService = LocalStockService()
     
     // 新增取得觀察清單名稱的計算屬性
     private var watchlistNames: [String] {
         UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
-        }
+    }
     
     // 新增一個帶初始值的建構函式
     
@@ -44,7 +45,6 @@ struct AddStockView: View {
         self.initialSymbol = initialSymbol
         self.initialName = initialName
         
- 
     }
     
     var body: some View {
@@ -93,19 +93,33 @@ struct AddStockView: View {
                             Text("季配").tag(4)
                             Text("月配").tag(12)
                         }
+                        .disabled(true)
+                        
+                        
                         DatePicker(
                             "買入日期",
                             selection: $purchaseDate,
                             displayedComponents: .date
                         )
-                        .datePickerStyle(.compact)
+                        .onChange(of: purchaseDate) { oldValue, newValue in
+                            Task {
+                                await loadStockPrice()
+                            }
+                            if isLoadingPrice {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                            } else {
+                                TextField("收盤價", text: $purchasePrice)
+                                    .keyboardType(.decimalPad)
+                            }
+                        }
                     }
-                }
-                
-                if !errorMessage.isEmpty {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
+                    
+                    if !errorMessage.isEmpty {
+                        Section {
+                            Text(errorMessage)
+                                .foregroundColor(.red)
+                        }
                     }
                 }
             }
@@ -120,17 +134,25 @@ struct AddStockView: View {
             )
         }
         .task {
-
-
+            
+            
             if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
                 dividendPerShare = String(format: "%.2f", dividend)
             }
             if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
-                    frequency = freq
+                frequency = freq
             }
+            await loadStockPrice()
         }
     }
     
+    private func loadStockPrice() async {
+        isLoadingPrice = true
+        if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
+            purchasePrice = String(format: "%.2f", price)
+        }
+        isLoadingPrice = false
+    }
     
     
     private func addStock() {
@@ -155,6 +177,10 @@ struct AddStockView: View {
                 errorMessage = "無法取得發放頻率"
                 return
             }
+            guard let priceDouble = Double(purchasePrice), priceDouble > 0 else {  // 修改這裡
+                errorMessage = "請輸入有效的股價"
+                return
+            }
             
             // 新增到庫存股
             let stock = Stock(
@@ -166,7 +192,9 @@ struct AddStockView: View {
                 dividendYear: Calendar.current.component(.year, from: Date()),
                 isHistorical: false,
                 frequency: unwrappedFrequency,
-                purchaseDate: purchaseDate
+                purchaseDate: purchaseDate,
+                purchasePrice: priceDouble
+                
             )
             stocks.append(stock)
         } else {
@@ -192,9 +220,8 @@ struct AddStockView: View {
         
         // 完成後關閉視圖
         dismiss()
-        }
     }
-
+}
 #Preview {
     ContentView()
 }
