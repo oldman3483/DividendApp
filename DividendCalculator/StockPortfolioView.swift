@@ -121,6 +121,11 @@ struct StockPortfolioView: View {
         }
     }
     
+    private func deleteStock(_ stockInfo: WeightedStockInfo) {
+        stocks.removeAll { stock in
+            stockInfo.symbol == stock.symbol
+        }
+    }
     // MARK: - 輔助方法
     private func deleteStocks(at offsets: IndexSet) {
         let stocksToDelete = offsets.map { groupedStocks[$0] }
@@ -145,6 +150,8 @@ struct StockPortfolioView: View {
 struct StockSummaryRow: View {
     let stockInfo: WeightedStockInfo
     let isEditing: Bool
+    var onDelete: (() -> Void)? = nil
+
 
     
     var body: some View {
@@ -197,6 +204,13 @@ struct StockSummaryRow: View {
                 Image(systemName: "pencil")
                     .foregroundColor(.blue)
                     .font(.system(size: 14, weight: .semibold))
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            onDelete?()
+                        } label: {
+                            Label("刪除", systemImage: "trash")
+                        }
+                    }
             }
         }
         .padding(.vertical, 4)
