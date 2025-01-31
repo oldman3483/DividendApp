@@ -41,89 +41,111 @@ struct StockPortfolioView: View {
     // MARK: - 屬性
     @Binding var stocks: [Stock]
     @Binding var isEditing: Bool
+    
+    let bankId: UUID
+    let bankName: String
+    
     @State private var selectedStock: WeightedStockInfo?
     @State private var showingDetail = false
+    @State private var searchText: String = ""
+
+    
     
     // MARK: - 計算屬性
+    
+    private var bankStocks: [Stock] {
+        stocks.filter { stock in
+            stock.bankId == bankId
+        }
+    }
     private var groupedStocks: [WeightedStockInfo] {
-        stocks.calculateWeightedAverage()
+        stocks.calculateWeightedAverage(forBankId: bankId)
     }
     
     private var totalAnnualDividend: Double {
         groupedStocks.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
     }
     
+    
+    
     // MARK: - 視圖主體
     var body: some View {
-        List {
-            // 總覽區塊
-            Section {
-                HStack {
-                    Text("總持股數")
-                    Spacer()
-                    Text("\(groupedStocks.count) 檔")
-                        .foregroundColor(.gray)
-                }
-                
-                HStack {
-                    Text("預估年化股利")
-                    Spacer()
-                    Text("$\(String(format: "%.0f", totalAnnualDividend))")
-                        .foregroundColor(.green)
-                }
-            }
-            .listRowBackground(Color.clear)
-            
-            // 股票列表區塊
-            Section {
-                ForEach(groupedStocks) { stockInfo in
-                    Group {
-                        if isEditing {
-                            // 編輯模式視圖
-                            StockSummaryRow(stockInfo: stockInfo, isEditing: true)
-                        } else {
-                            // 一般模式視圖
-                            Button(action: {
-                                selectedStock = stockInfo
-                                showingDetail = true
-                            }) {
-                                StockSummaryRow(stockInfo: stockInfo, isEditing: false)
-                            }
-                            .foregroundColor(.primary)
+        NavigationStack {
+                List {
+                    // 總覽區塊
+                    Section {
+                        HStack {
+                            Text("總持股數")
+                            Spacer()
+                            Text("\(groupedStocks.count) 檔")
+                                .foregroundColor(.gray)
+                        }
+                        
+                        HStack {
+                            Text("預估年化股利")
+                            Spacer()
+                            Text("$\(String(format: "%.0f", totalAnnualDividend))")
+                                .foregroundColor(.green)
                         }
                     }
-                    .modifier(EditModeViewModifier(isEditing: isEditing))
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    
+                    // 股票列表區塊
+                    Section {
+                        ForEach(groupedStocks) { stockInfo in
+                            Group {
+                                if isEditing {
+                                    // 編輯模式視圖
+                                    StockSummaryRow(
+                                        stockInfo: stockInfo,
+                                        isEditing: true,
+                                        onDelete: { deleteStock(stockInfo) }
+                                    )
+                                } else {
+                                    // 一般模式視圖
+                                    Button(action: {
+                                        selectedStock = stockInfo
+                                        showingDetail = true
+                                    }) {
+                                        StockSummaryRow(stockInfo: stockInfo, isEditing: false)
+                                    }
+                                    .foregroundColor(.primary)
+                                }
+                            }
+                            .modifier(EditModeViewModifier(isEditing: isEditing))
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                        }
+                        .onDelete(perform: isEditing ? deleteStocks : nil)
+                        .onMove(perform: isEditing ? moveStocks : nil)
+                    }
+                    .listRowBackground(Color.clear)
                 }
-                .onDelete(perform: isEditing ? deleteStocks : nil)
-                .onMove(perform: isEditing ? moveStocks : nil)
-            }
-            .listRowBackground(Color.clear)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("庫存股")
-                    .font(.system(size: 40, weight: .bold))
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button(isEditing ? "完成" : "編輯") {
-                    withAnimation {
-                        isEditing.toggle()
+            .padding(.top, 20)  // 新增這一行
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(bankName)
+                        .font(.system(size: 30, weight: .bold))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(isEditing ? "完成" : "編輯") {
+                        withAnimation {
+                            isEditing.toggle()
+                        }
                     }
                 }
             }
-        }
-        .sheet(isPresented: $showingDetail) {
-            if let stockInfo = selectedStock {
-                StockDetailView(stockInfo: stockInfo)
+            .sheet(isPresented: $showingDetail) {
+                if let stockInfo = selectedStock {
+                    StockDetailView(stockInfo: stockInfo)
+                }
             }
         }
     }
     
     private func deleteStock(_ stockInfo: WeightedStockInfo) {
         stocks.removeAll { stock in
-            stockInfo.symbol == stock.symbol
+            stockInfo.symbol == stock.symbol && stock.bankId == bankId
         }
     }
     // MARK: - 輔助方法

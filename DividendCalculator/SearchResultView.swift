@@ -21,6 +21,7 @@ struct SearchResultView: View {
     @State private var selectedName: String = ""
     
     let searchText: String
+    let bankId: UUID?
     
     var body: some View {
         NavigationStack {
@@ -63,7 +64,8 @@ struct SearchResultView: View {
                         stocks: $stocks,
                         watchlist: $watchlist,
                         initialSymbol: selectedSymbol,
-                        initialName: selectedName
+                        initialName: selectedName,
+                        bankId: bankId ?? UUID()
                     )
                 }
             }

@@ -14,6 +14,7 @@ struct AddStockView: View {
     
     let initialSymbol: String
     let initialName: String
+    let bankId: UUID
     
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
@@ -37,13 +38,15 @@ struct AddStockView: View {
         stocks: Binding<[Stock]>,
         watchlist: Binding<[WatchStock]>,
         initialSymbol: String = "",
-        initialName: String = ""
+        initialName: String = "",
+        bankId: UUID
         
     ) {
         self._stocks = stocks
         self._watchlist = watchlist
         self.initialSymbol = initialSymbol
         self.initialName = initialName
+        self.bankId = bankId
         
     }
     
@@ -193,7 +196,8 @@ struct AddStockView: View {
                 isHistorical: false,
                 frequency: unwrappedFrequency,
                 purchaseDate: purchaseDate,
-                purchasePrice: priceDouble
+                purchasePrice: priceDouble,
+                bankId: bankId
                 
             )
             stocks.append(stock)

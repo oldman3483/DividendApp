@@ -19,6 +19,9 @@ struct Stock: Identifiable, Codable, Equatable {
     var frequency: Int       // 發放頻率（1=年配, 2=半年配, 4=季配, 12=月配）
     var purchaseDate: Date   // 購買日期
     var purchasePrice: Double? // 購買價格
+    var bankId: UUID // 關聯的銀行ID
+
+
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -31,6 +34,7 @@ struct Stock: Identifiable, Codable, Equatable {
         case frequency
         case purchaseDate
         case purchasePrice
+        case bankId
     }
     
     // 計算年化股利
@@ -59,6 +63,7 @@ struct Stock: Identifiable, Codable, Equatable {
         frequency = try container.decode(Int.self, forKey: .frequency)
         purchaseDate = try container.decode(Date.self, forKey: .purchaseDate)
         purchasePrice = try container.decodeIfPresent(Double.self, forKey: .purchasePrice)
+        bankId = try container.decodeIfPresent(UUID.self, forKey: .bankId) ?? UUID()
     }
     
     // 編碼方法
@@ -74,6 +79,7 @@ struct Stock: Identifiable, Codable, Equatable {
         try container.encode(frequency, forKey: .frequency)
         try container.encode(purchaseDate, forKey: .purchaseDate)
         try container.encodeIfPresent(purchasePrice, forKey: .purchasePrice)
+        try container.encodeIfPresent(bankId, forKey: .bankId)
     }
     
     // 初始化方法
@@ -87,7 +93,8 @@ struct Stock: Identifiable, Codable, Equatable {
         isHistorical: Bool = false,
         frequency: Int = 1,
         purchaseDate: Date = Date(),
-        purchasePrice: Double? = nil
+        purchasePrice: Double? = nil,
+        bankId: UUID
     ) {
         self.id = id
         self.symbol = symbol
@@ -99,6 +106,7 @@ struct Stock: Identifiable, Codable, Equatable {
         self.frequency = frequency
         self.purchaseDate = purchaseDate
         self.purchasePrice = purchasePrice
+        self.bankId = bankId
     }
     
     static func == (lhs: Stock, rhs: Stock) -> Bool {
@@ -148,7 +156,12 @@ extension Array where Element == Stock {
     }
     
     // 計算加權平均數據
-    func calculateWeightedAverage() -> [WeightedStockInfo] {
+    func calculateWeightedAverage(forBankId bankId: UUID? = nil) -> [WeightedStockInfo] {
+        let filteredStocks = self.filter { stock in
+            stock.bankId == bankId
+        }
+        
+        
         let groupedStocks = self.groupedBySymbol()
         
         return groupedStocks.map { symbol, stocks in

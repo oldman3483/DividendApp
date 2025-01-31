@@ -12,13 +12,15 @@ struct AddStockSheetView: View {
     @Binding var watchlist: [WatchStock]
     let symbol: String
     let name: String
+    let bankId: UUID
     
     var body: some View {
         AddStockView(
             stocks: $stocks,
             watchlist: $watchlist,
             initialSymbol: symbol,
-            initialName: name
+            initialName: name,
+            bankId: bankId
         )
     }
 }

@@ -11,14 +11,16 @@ struct SearchBarView: View {
     @Binding var searchText: String
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
+    let bankId: UUID?
 
     @State private var showingSearchResult = false
     
     // 加入預覽用的初始化器
-    init(searchText: Binding<String>, stocks: Binding<[Stock]>,watchlist: Binding<[WatchStock]>) {
+    init(searchText: Binding<String>, stocks: Binding<[Stock]>,watchlist: Binding<[WatchStock]>, bankId: UUID) {
         self._searchText = searchText
         self._stocks = stocks
         self._watchlist  = watchlist
+        self.bankId = bankId
     }
     
     
@@ -50,7 +52,8 @@ struct SearchBarView: View {
             SearchResultView(
                 stocks: $stocks,
                 watchlist: $watchlist,
-                searchText: searchText
+                searchText: searchText,
+                bankId: bankId ?? UUID()
             )
         }
     }

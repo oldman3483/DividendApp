@@ -79,7 +79,7 @@ struct WatchlistView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("觀察清單")
-                    .font(.system(size: 40, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {

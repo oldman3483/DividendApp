@@ -12,14 +12,12 @@ struct ContentView: View {
     @State private var watchlist: [WatchStock] = []
     @State private var searchText: String = ""
     @State private var isEditing = false
-    @State private var showingAddSheet = false
     let stockService = LocalStockService()
+    @State private var banks: [Bank] = []  // 新增以保存銀行列表
+
     
     var body: some View {
         mainView
-            .sheet(isPresented: $showingAddSheet) {
-                AddStockView(stocks: $stocks, watchlist: $watchlist)
-            }
             .onAppear {
                 loadData()
             }
@@ -29,6 +27,9 @@ struct ContentView: View {
             .onChange(of: watchlist) { oldValue, newValue in
                 saveData()
             }
+            .onChange(of: banks) { oldValue, newValue in
+                saveData()
+            }
     }
     
     private var mainView: some View {
@@ -36,54 +37,48 @@ struct ContentView: View {
             SearchBarView(
                 searchText: $searchText,
                 stocks: $stocks,
-                watchlist: $watchlist
+                watchlist: $watchlist,
+                bankId: UUID()
             )
-                .zIndex(1)
+            .zIndex(1)
             
             TabView {
-                portfolioTab
-                watchlistTab
-                overviewTab
-            }
-        }
-    }
-    
-    private var portfolioTab: some View {
-        NavigationStack {
-            StockPortfolioView(stocks: $stocks, isEditing: $isEditing)
-        }
-        .padding(.top, 70)
-        .tabItem {
-            Label("庫存股", systemImage: "chart.pie.fill")
-        }
-    }
-    
-    private var watchlistTab: some View {
-        NavigationStack {
-            WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
-        }
-        .padding(.top, 65)
-        .tabItem {
-            Label("觀察清單", systemImage: "star.fill")
-        }
-    }
-    
-    private var overviewTab: some View {
-        NavigationStack {
-            Text("投資總覽")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Text("投資總覽")
-                            .font(.system(size: 40, weight: .bold))
-                    }
+                NavigationStack{
+                    BankListView(banks: $banks, stocks: $stocks)
                 }
-        }
-        .padding(.top, 65)
-        .tabItem {
-            Label("投資總覽", systemImage: "chart.bar.fill")
+                .padding(.top, 65)  // 保持原有的 padding
+                .tabItem {
+                    Label("庫存股", systemImage: "chart.pie.fill")
+                }
+                
+                NavigationStack {
+                    WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
+                }
+                .padding(.top, 65)  // 保持原有的 padding
+                .tabItem {
+                    Label("觀察清單", systemImage: "star.fill")
+                }
+                
+                NavigationStack {
+                    Text("投資總覽")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .principal) {
+                                Text("投資總覽")
+                                    .font(.system(size: 30, weight: .bold))
+                            }
+                        }
+                }
+                .padding(.top, 65)
+                .tabItem {
+                    Label("投資總覽", systemImage: "chart.bar.fill")
+                }
+            }
+            
+            .accentColor(.blue)// 微調選中的顏色
         }
     }
+
     
     // Data persistence methods
     private func saveData() {
@@ -95,6 +90,12 @@ struct ContentView: View {
             UserDefaults.standard.set(encodedWatchlist, forKey: "watchlist")
             UserDefaults.standard.synchronize()
         }
+        if let encodedBanks = try? JSONEncoder().encode(banks) {
+            UserDefaults.standard.set(encodedBanks, forKey: "banks")
+        }
+        
+        UserDefaults.standard.synchronize()
+
     }
     
     private func loadData() {
@@ -106,6 +107,11 @@ struct ContentView: View {
         if let savedWatchlist = UserDefaults.standard.data(forKey: "watchlist"),
            let decodedWatchlist = try? JSONDecoder().decode([WatchStock].self, from: savedWatchlist) {
             watchlist = decodedWatchlist
+        }
+        
+        if let savedBanks = UserDefaults.standard.data(forKey: "banks"),
+           let decodedBanks = try? JSONDecoder().decode([Bank].self, from: savedBanks) {
+            banks = decodedBanks
         }
     }
 }
