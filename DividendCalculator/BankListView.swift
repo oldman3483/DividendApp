@@ -42,7 +42,7 @@ struct BankListView: View {
                 .onMove(perform: moveBanks)
                 
             }
-            .listRowSpacing(10)  // 增加列表项之间的间距
+            .listRowSpacing(10)// 增加列表项之间的间距
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -63,6 +63,8 @@ struct BankListView: View {
             .sheet(isPresented: $showingAddBank) {
                 AddBankView(banks: $banks)
             }
+            .padding(.top, 20)
+
             
             // 浮動的新增按鈕
             VStack {
