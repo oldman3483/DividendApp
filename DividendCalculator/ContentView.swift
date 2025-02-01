@@ -14,70 +14,99 @@ struct ContentView: View {
     @State private var isEditing = false
     let stockService = LocalStockService()
     @State private var banks: [Bank] = []  // 新增以保存銀行列表
-
+    
     
     var body: some View {
-        mainView
-            .onAppear {
-                loadData()
-            }
-            .onChange(of: stocks) { oldValue, newValue in
-                saveData()
-            }
-            .onChange(of: watchlist) { oldValue, newValue in
-                saveData()
-            }
-            .onChange(of: banks) { oldValue, newValue in
-                saveData()
-            }
-    }
-    
-    private var mainView: some View {
         ZStack(alignment: .top) {
-            SearchBarView(
-                searchText: $searchText,
-                stocks: $stocks,
-                watchlist: $watchlist,
-                bankId: UUID()
-            )
-            .zIndex(1)
+            // 全局背景色
+            Color.white
+                .ignoresSafeArea()
             
-            TabView {
-                NavigationStack{
-                    BankListView(banks: $banks, stocks: $stocks)
-                }
-                .padding(.top, 65)  // 保持原有的 padding
-                .tabItem {
-                    Label("庫存股", systemImage: "chart.pie.fill")
-                }
+            VStack(spacing: -45) {
                 
-                NavigationStack {
-                    WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
-                }
-                .padding(.top, 65)  // 保持原有的 padding
-                .tabItem {
-                    Label("觀察清單", systemImage: "star.fill")
-                }
+                SearchBarView(
+                    searchText: $searchText,
+                    stocks: $stocks,
+                    watchlist: $watchlist,
+                    bankId: UUID()
+                )
+                .zIndex(1)
                 
-                NavigationStack {
-                    Text("投資總覽")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .principal) {
-                                Text("投資總覽")
-                                    .font(.system(size: 30, weight: .bold))
+                TabView {
+                    NavigationStack{
+                        BankListView(banks: $banks, stocks: $stocks)
+                    }
+                    .padding(.top, 65)
+                    .tabItem {
+                        Label("庫存股", systemImage: "chart.pie.fill")
+                    }
+                    
+                    NavigationStack {
+                        WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
+                    }
+                    .padding(.top, 65)
+                    .tabItem {
+                        Label("觀察清單", systemImage: "star.fill")
+                    }
+                    
+                    NavigationStack {
+                        Text("投資總覽")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .principal) {
+                                    Text("投資總覽")
+                                        .navigationTitleStyle()
+                                }
                             }
-                        }
+                    }
+                    .padding(.top, 65)
+                    .tabItem {
+                        Label("投資總覽", systemImage: "chart.bar.fill")
+                    }
                 }
-                .padding(.top, 65)
-                .tabItem {
-                    Label("投資總覽", systemImage: "chart.bar.fill")
+                .onAppear{
+                    // 設置 TabView 的背景顏色
+                    let appearance = UITabBarAppearance()
+                    appearance.configureWithOpaqueBackground()
+                    appearance.backgroundColor = .white
+                    
+                    // 移除 TabBar 的上方分隔線
+                    appearance.shadowColor = nil
+
+                    
+                    UITabBar.appearance().standardAppearance = appearance
+                    UITabBar.appearance().scrollEdgeAppearance = appearance
+                    
+                    // 移除列表的分隔線
+                    UITableView.appearance().separatorStyle = .none
+                    UITableView.appearance().backgroundColor = .white
+                    
+                    // 移除導航欄底部分隔線
+                    let navigationBarAppearance = UINavigationBarAppearance()
+                    navigationBarAppearance.configureWithOpaqueBackground()
+                    navigationBarAppearance.backgroundColor = .white
+                    navigationBarAppearance.shadowColor = .clear
+                    UINavigationBar.appearance().standardAppearance = navigationBarAppearance
+                    UINavigationBar.appearance().scrollEdgeAppearance = navigationBarAppearance
+
+
                 }
             }
-            
-            .accentColor(.blue)// 微調選中的顏色
+        }
+        .onAppear {
+            loadData()
+        }
+        .onChange(of: stocks) { oldValue, newValue in
+            saveData()
+        }
+        .onChange(of: watchlist) { oldValue, newValue in
+            saveData()
+        }
+        .onChange(of: banks) { oldValue, newValue in
+            saveData()
         }
     }
+
 
     
     // Data persistence methods

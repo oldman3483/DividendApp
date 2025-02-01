@@ -125,7 +125,7 @@ struct StockPortfolioView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(bankName)
-                        .font(.system(size: 30, weight: .bold))
+                        .navigationTitleStyle()
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(isEditing ? "完成" : "編輯") {
@@ -225,7 +225,7 @@ struct StockSummaryRow: View {
             } else {
                 Image(systemName: "pencil")
                     .foregroundColor(.blue)
-                    .font(.system(size: 14, weight: .semibold))
+                    .bodyStyle()
                     .contextMenu {
                         Button(role: .destructive) {
                             onDelete?()

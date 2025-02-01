@@ -13,8 +13,12 @@ struct BankListView: View {
     @State private var showingAddBank = false
     @State private var isEditing = false
 
+    // 莫蘭迪色系
 
-    
+    private let cardBackground = Color(red: 0.93, green: 0.91, blue: 0.89)
+    private let cardBorder = Color(red: 0.85, green: 0.82, blue: 0.80)
+
+        
     var body: some View {
         NavigationStack {
             List {
@@ -26,28 +30,44 @@ struct BankListView: View {
                         bankName: bank.name
                     )) {
                         HStack{
-                            if isEditing {
-                                Image(systemName: "line.3.horizontal")
-                                    .foregroundColor(.gray)
-                            }
-                            Spacer()
-                                .frame(width: 15)
                             Text(bank.name)
-                                .font(.system(size: 20, weight: .semibold))
-                                .padding(.vertical, 8)
+                                .heading3Style()
+                                .padding(.vertical, 10)
+                                .padding(.horizontal, isEditing ? 8 : 16)
+                                .foregroundColor(.black)
+                            Spacer()
+                            
                         }
+                        .frame(maxWidth: .infinity)
+                        .background(.white)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(cardBorder, lineWidth: 0)
+                        )
+                        .shadow(
+                            color: Color.black.opacity(0.1),
+                            radius: 3,
+                            x: 0,
+                            y: 2
+                        )
                     }
+                    .listRowBackground(Color.white)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowSeparator(.hidden)  // 新增這行來隱藏分隔線
                 }
                 .onDelete(perform: deleteBank)
                 .onMove(perform: moveBanks)
-                
+
             }
+            .listStyle(PlainListStyle())  // 使用純列表樣式
             .listRowSpacing(10)// 增加列表项之间的间距
+            .background(Color.white)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("我的銀行")
-                        .font(.system(size: 30, weight: .bold))
+                        .navigationTitleStyle()
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -60,10 +80,7 @@ struct BankListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddBank) {
-                AddBankView(banks: $banks)
-            }
-            .padding(.top, 20)
+            .padding(.top, 25)
 
             
             // 浮動的新增按鈕
@@ -85,7 +102,10 @@ struct BankListView: View {
                 }
             }
         }
-        
+        .sheet(isPresented: $showingAddBank) {
+            AddBankView(banks: $banks)
+        }
+
         .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
     }
 
