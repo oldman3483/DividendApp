@@ -11,6 +11,7 @@ struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
     
     let stockService = LocalStockService()
     @State private var searchResults: [SearchStock] = []
@@ -21,7 +22,6 @@ struct SearchResultView: View {
     @State private var selectedName: String = ""
     
     let searchText: String
-    let bankId: UUID?
     
     var body: some View {
         NavigationStack {
@@ -45,7 +45,6 @@ struct SearchResultView: View {
                                 }
                                 Spacer()
                                 Button(action: {
-                                    print("選擇股票: \(stock.symbol) \(stock.name)")
                                     selectedSymbol = stock.symbol
                                     selectedName = stock.name
                                     showingAddStockView = true
@@ -63,9 +62,9 @@ struct SearchResultView: View {
                     AddStockView(
                         stocks: $stocks,
                         watchlist: $watchlist,
+                        banks: $banks,
                         initialSymbol: selectedSymbol,
-                        initialName: selectedName,
-                        bankId: bankId ?? UUID()
+                        initialName: selectedName
                     )
                 }
             }

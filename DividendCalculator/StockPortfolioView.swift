@@ -5,11 +5,7 @@
 //  Created by Heidie Lee on 2025/1/24.
 //
 //
-//  StockPortfolioView.swift
-//  DividendCalculator
-//
-//  Created by Heidie Lee on 2025/1/24.
-//
+
 
 import SwiftUI
 
@@ -47,7 +43,6 @@ struct StockPortfolioView: View {
     
     @State private var selectedStock: WeightedStockInfo?
     @State private var showingDetail = false
-    @State private var searchText: String = ""
 
     
     
@@ -140,27 +135,32 @@ struct StockPortfolioView: View {
                     StockDetailView(stockInfo: stockInfo)
                 }
             }
+            .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
+
         }
     }
-    
+    // MARK: - 輔助方法
+
     private func deleteStock(_ stockInfo: WeightedStockInfo) {
         stocks.removeAll { stock in
             stockInfo.symbol == stock.symbol && stock.bankId == bankId
         }
     }
-    // MARK: - 輔助方法
     private func deleteStocks(at offsets: IndexSet) {
         let stocksToDelete = offsets.map { groupedStocks[$0] }
         stocks.removeAll { stock in
-            stocksToDelete.contains { $0.symbol == stock.symbol }
+            stocksToDelete.contains { $0.symbol == stock.symbol && stock.bankId == bankId }
         }
     }
     
     private func moveStocks(from source: IndexSet, to destination: Int) {
-        var sortOrder = groupedStocks.map { $0.symbol }
-        sortOrder.move(fromOffsets: source, toOffset: destination)
-        let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
-        stocks.sort { (stock1, stock2) in
+        var currentStocks = groupedStocks
+        currentStocks.move(fromOffsets: source, toOffset: destination)
+        
+        let newOrder = currentStocks.map { $0.symbol }
+        let orderDict = Dictionary(uniqueKeysWithValues: newOrder.enumerated().map { ($0.element, $0.offset) })
+
+        stocks = stocks.sorted { stock1, stock2 in
             let index1 = orderDict[stock1.symbol] ?? 0
             let index2 = orderDict[stock2.symbol] ?? 0
             return index1 < index2
