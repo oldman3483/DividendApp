@@ -10,17 +10,17 @@ import SwiftUI
 struct AddStockSheetView: View {
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
-    @Binding var banks: [Bank]
     let symbol: String
     let name: String
+    let bankId: UUID
     
     var body: some View {
         AddStockView(
             stocks: $stocks,
             watchlist: $watchlist,
-            banks: $banks,
             initialSymbol: symbol,
-            initialName: name
+            initialName: name,
+            bankId: bankId
         )
     }
 }

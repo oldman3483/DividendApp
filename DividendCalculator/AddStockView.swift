@@ -11,17 +11,15 @@ struct AddStockView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
-    @Binding var banks: [Bank]
-
     
     let initialSymbol: String
     let initialName: String
+    let bankId: UUID
     
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
     @State private var frequency: Int?
     @State private var selectedDestination = "庫存股"
-    @State private var selectedBankId: UUID? = nil
     @State private var errorMessage: String = ""
     @State private var purchaseDate = Date()
     @State private var purchasePrice: String = ""
@@ -39,16 +37,16 @@ struct AddStockView: View {
     init(
         stocks: Binding<[Stock]>,
         watchlist: Binding<[WatchStock]>,
-        banks: Binding<[Bank]>,
         initialSymbol: String = "",
-        initialName: String = ""
+        initialName: String = "",
+        bankId: UUID
         
     ) {
         self._stocks = stocks
         self._watchlist = watchlist
-        self._banks = banks
         self.initialSymbol = initialSymbol
         self.initialName = initialName
+        self.bankId = bankId
         
     }
     
@@ -77,28 +75,11 @@ struct AddStockView: View {
                             Text(name).tag(name)
                         }
                     }
-                    // 只有在選擇庫存股時才顯示銀行選擇
-                    if selectedDestination == "庫存股" {
-                        Picker("選擇銀行", selection: $selectedBankId) {
-                            Text("選擇銀行").tag(nil as UUID?)
-                            ForEach(banks) { bank in
-                                Text(bank.name).tag(bank.id as UUID?)
-                            }
-                        }
-                    }
                 }
                 
                 // 第三個區段：只在選擇庫存股時顯示
                 if selectedDestination == "庫存股" {
                     Section(header: Text("庫存資訊")) {
-                        
-                        // 銀行驗證
-                        if selectedBankId == nil {
-                            Text("請先選擇銀行")
-                                .foregroundColor(.red)
-                        }
-                            
-
                         TextField("持股數量", text: $shares)
                             .keyboardType(.numberPad)
                         
@@ -154,7 +135,6 @@ struct AddStockView: View {
                     addStock()
                 }
             )
-            .disabled(selectedDestination == "庫存股" && selectedBankId == nil)
         }
         .task {
             
@@ -204,11 +184,7 @@ struct AddStockView: View {
                 errorMessage = "請輸入有效的股價"
                 return
             }
-            guard let bankId = selectedBankId else {
-                errorMessage = "請選擇銀行"
-                return
-            }
-                
+            
             // 新增到庫存股
             let stock = Stock(
                 id: UUID(),

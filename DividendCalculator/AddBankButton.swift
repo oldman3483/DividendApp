@@ -2,7 +2,7 @@
 //  AddBankButton.swift
 //  DividendCalculator
 //
-//  Created by Heidie Lee on 2025/2/2.
+//  Created by Heidie Lee on 2025/2/4.
 //
 
 import SwiftUI

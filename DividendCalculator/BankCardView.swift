@@ -2,16 +2,15 @@
 //  BankCardView.swift
 //  DividendCalculator
 //
-//  Created by Heidie Lee on 2025/2/2.
+//  Created by Heidie Lee on 2025/2/4.
 //
-
 
 import SwiftUI
 
 struct BankCardView: View {
     let bank: Bank
     let isEditing: Bool
-    let onRename: () -> Void
+    let onRename: (Bank) -> Void
     
     var body: some View {
         HStack {
@@ -23,7 +22,7 @@ struct BankCardView: View {
             Spacer()
             
             if isEditing {
-                Button(action: onRename) {
+                Button(action: { onRename(bank) }) {
                     Image(systemName: "pencil.circle")
                         .foregroundColor(.blue)
                 }
@@ -47,5 +46,24 @@ struct BankCardView: View {
 }
 
 #Preview {
-    ContentView()
+    // 創建一個示例銀行用於預覽
+    let sampleBank = Bank(name: "測試銀行")
+    
+    return VStack(spacing: 20) {
+        // 非編輯模式的預覽
+        BankCardView(
+            bank: sampleBank,
+            isEditing: false,
+            onRename: { _ in }
+        )
+        
+        // 編輯模式的預覽
+        BankCardView(
+            bank: sampleBank,
+            isEditing: true,
+            onRename: { _ in }
+        )
+    }
+    .padding()
+    .background(Color.gray.opacity(0.1))
 }

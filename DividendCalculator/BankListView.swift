@@ -5,8 +5,9 @@
 //  Created by Heidie Lee on 2025/1/31.
 //
 
-
 import SwiftUI
+
+
 
 struct BankListView: View {
     @Binding var banks: [Bank]
@@ -14,35 +15,63 @@ struct BankListView: View {
     @State private var showingAddBank = false
     @State private var isEditing = false
     @State private var showingRenameAlert = false
-    @State private var selectedBank: Bank?
+    @State private var bankToRename: Bank?
     @State private var newBankName = ""
-    @State private var errorMessage = ""
+    @State private var errorMessage: String = ""
     @State private var showingErrorAlert = false
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
-                if banks.isEmpty {
-                    emptyStateView
-                } else {
-                    bankListContent
-                }
+                BankListContent(
+                    banks: $banks,
+                    stocks: $stocks,
+                    isEditing: isEditing,
+                    onRename: { bank in
+                        bankToRename = bank
+                        newBankName = bank.name
+                        showingRenameAlert = true
+                    },
+                    onDelete: deleteBank,
+                    onMove: moveBanks
+                )
                 
-                if !isEditing {
-                    AddBankButton(action: { showingAddBank = true })
-                }
+                AddBankButton(action: { showingAddBank = true })
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                toolbarContent
+                ToolbarItem(placement: .principal) {
+                    Text("我的銀行")
+                        .navigationTitleStyle()
+                }
             }
-            .padding(.top, 0)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if !banks.isEmpty {
+                        Button(isEditing ? "完成" : "編輯") {
+                            withAnimation {
+                                isEditing.toggle()
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.top, 25)
         }
         .sheet(isPresented: $showingAddBank) {
             AddBankView(banks: $banks)
         }
         .alert("重新命名銀行", isPresented: $showingRenameAlert) {
-            renameAlertContent
+            TextField("銀行名稱", text: $newBankName)
+                .autocorrectionDisabled(true)
+            Button("取消", role: .cancel) {
+                resetRenameState()
+            }
+            Button("確定") {
+                renameSelectedBank()
+            }
+        } message: {
+            Text("請輸入新的銀行名稱")
         }
         .alert("錯誤", isPresented: $showingErrorAlert) {
             Button("確定", role: .cancel) { }
@@ -50,68 +79,6 @@ struct BankListView: View {
             Text(errorMessage)
         }
         .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
-    }
-    
-    private var emptyStateView: some View {
-        VStack {
-            Text("尚無銀行")
-                .foregroundColor(.gray)
-            Spacer()
-        }
-    }
-    
-    private var bankListContent: some View {
-        List {
-            ForEach(banks) { bank in
-                BankListItemView(
-                    bank: bank,
-                    isEditing: isEditing,
-                    onRename: {
-                        selectedBank = bank
-                        newBankName = bank.name
-                        showingRenameAlert = true
-                    },
-                    stocks: $stocks
-                )
-            }
-            .onDelete(perform: deleteBank)
-            .onMove(perform: moveBanks)
-        }
-        .listStyle(PlainListStyle())
-        .listRowSpacing(10)
-        .background(Color.white)
-    }
-    
-    private var toolbarContent: some ToolbarContent {
-        Group {
-            ToolbarItem(placement: .principal) {
-                Text("我的銀行")
-                    .navigationTitleStyle()
-            }
-            
-            ToolbarItem(placement: .navigationBarTrailing) {
-                if !banks.isEmpty {
-                    Button(isEditing ? "完成" : "編輯") {
-                        withAnimation {
-                            isEditing.toggle()
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private var renameAlertContent: some View {
-        Group {
-            TextField("銀行名稱", text: $newBankName)
-                .autocorrectionDisabled(true)
-            Button("取消", role: .cancel) {
-                newBankName = ""
-            }
-            Button("確定") {
-                renameSelectedBank()
-            }
-        }
     }
     
     private func deleteBank(at offsets: IndexSet) {
@@ -134,22 +101,33 @@ struct BankListView: View {
             showingErrorAlert = true
             return
         }
-        
-        if let selectedBank = selectedBank,
-           let bankIndex = banks.firstIndex(where: { $0.id == selectedBank.id }) {
-            if banks.contains(where: { $0.name == trimmedName && $0.id != selectedBank.id }) {
+                
+        if let bank = bankToRename,
+           let bankIndex = banks.firstIndex(where: { $0.id == bank.id }) {
+            if banks.contains(where: { $0.name == trimmedName && $0.id != bank.id }) {
                 errorMessage = "已存在相同名稱的銀行"
                 showingErrorAlert = true
                 return
             }
             
-            var updatedBank = banks[bankIndex]
-            updatedBank.name = trimmedName
+            let updatedBank = Bank(
+                id: banks[bankIndex].id,
+                name: trimmedName,
+                createdDate: banks[bankIndex].createdDate
+            )
+            
             banks[bankIndex] = updatedBank
-            newBankName = ""
+            resetRenameState()
         }
     }
+    
+    private func resetRenameState() {
+        bankToRename = nil
+        newBankName = ""
+        showingRenameAlert = false
+    }
 }
+
 
 #Preview {
     ContentView()
