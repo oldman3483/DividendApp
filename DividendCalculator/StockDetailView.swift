@@ -59,6 +59,8 @@ struct StockDetailRow: View {
 // MARK: - 股票詳細信息視圖
 struct StockDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var showingEditSheet = false
+    
     let stockInfo: WeightedStockInfo
     
     var body: some View {
@@ -97,6 +99,10 @@ struct StockDetailView: View {
                     }
                 }
             }
+            EditButton(action: {
+                showingEditSheet = true
+            })
+        }
             .navigationTitle("\(stockInfo.symbol) \(stockInfo.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -106,6 +112,10 @@ struct StockDetailView: View {
                     }
                 }
             }
+            
+            .sheet(isPresented: $showingEditSheet) {
+                Text("編輯持股")
+            }
         }
     }
-}
+
