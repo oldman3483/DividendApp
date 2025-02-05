@@ -65,44 +65,46 @@ struct StockDetailView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                // 彙總資訊區塊
-                Section("彙總資訊") {
-                    SummaryRow(title: "總持股數", value: "\(stockInfo.totalShares)股")
-                    SummaryRow(
-                        title: "平均股利",
-                        value: "$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))"
-                    )
-                    if let avgPrice = stockInfo.weightedPurchasePrice {
+            ZStack {
+                List {
+                    // 彙總資訊區塊
+                    Section("彙總資訊") {
+                        SummaryRow(title: "總持股數", value: "\(stockInfo.totalShares)股")
                         SummaryRow(
-                            title: "加權平均成本",
-                            value: "$\(String(format: "%.2f", avgPrice))"
+                            title: "平均股利",
+                            value: "$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))"
                         )
+                        if let avgPrice = stockInfo.weightedPurchasePrice {
+                            SummaryRow(
+                                title: "加權平均成本",
+                                value: "$\(String(format: "%.2f", avgPrice))"
+                            )
+                        }
+                        SummaryRow(
+                            title: "預估年化股利",
+                            value: "$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))",
+                            valueColor: .green
+                        )
+                        if let totalValue = stockInfo.calculateTotalValue() {
+                            SummaryRow(
+                                title: "總市值",
+                                value: "$\(String(format: "%.0f", totalValue))"
+                            )
+                        }
                     }
-                    SummaryRow(
-                        title: "預估年化股利",
-                        value: "$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))",
-                        valueColor: .green
-                    )
-                    if let totalValue = stockInfo.calculateTotalValue() {
-                        SummaryRow(
-                            title: "總市值",
-                            value: "$\(String(format: "%.0f", totalValue))"
-                        )
+                    
+                    // 詳細持股區塊
+                    Section("詳細持股") {
+                        ForEach(stockInfo.details) { stock in
+                            StockDetailRow(stock: stock)
+                        }
                     }
                 }
                 
-                // 詳細持股區塊
-                Section("詳細持股") {
-                    ForEach(stockInfo.details) { stock in
-                        StockDetailRow(stock: stock)
-                    }
-                }
+                EditButton(action: {
+                    showingEditSheet = true
+                })
             }
-            EditButton(action: {
-                showingEditSheet = true
-            })
-        }
             .navigationTitle("\(stockInfo.symbol) \(stockInfo.name)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -118,4 +120,4 @@ struct StockDetailView: View {
             }
         }
     }
-
+}
