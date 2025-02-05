@@ -192,13 +192,6 @@ struct StockSummaryRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            if isEditing {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 16, weight: .regular))
-                    .transition(.scale)
-            }
-            
             VStack(alignment: .leading, spacing: 8) {
                 // 第一行：股票代號和名稱
                 HStack {
@@ -232,7 +225,7 @@ struct StockSummaryRow: View {
                     }
                 }
             }
-            // 非編輯模式顯示箭頭，編輯模式顯示編輯圖示
+                        
             if !isEditing {
                 Image(systemName: "chevron.right")
                     .foregroundColor(.gray)
