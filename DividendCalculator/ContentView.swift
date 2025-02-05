@@ -45,9 +45,9 @@ struct ContentView: View {
         .onAppear {
             setupInitialState()
         }
-        .onChange(of: stocks) { _ in saveData() }
-        .onChange(of: watchlist) { _ in saveData() }
-        .onChange(of: banks) { newValue in
+        .onChange(of: stocks) { oldValue, newValue in saveData() }
+        .onChange(of: watchlist) { oldValue, newValue in saveData() }
+        .onChange(of: banks) { oldValue, newValue in
             saveData()
             if let firstBank = newValue.first {
                 selectedBankId = firstBank.id
@@ -118,3 +118,4 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
+

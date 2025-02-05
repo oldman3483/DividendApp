@@ -4,12 +4,7 @@
 //
 //  Created by Heidie Lee on 2025/1/24.
 //
-//
-//  StockPortfolioView.swift
-//  DividendCalculator
-//
-//  Created by Heidie Lee on 2025/1/24.
-//
+
 
 import SwiftUI
 
@@ -59,7 +54,11 @@ struct StockPortfolioView: View {
         }
     }
     private var groupedStocks: [WeightedStockInfo] {
-        stocks.calculateWeightedAverage(forBankId: bankId)
+        print("Debug - Current bankId: \(bankId)")
+        print("Debug - All stocks: \(stocks)")
+        let filteredStocks = stocks.filter { $0.bankId == bankId }
+        print("Debug - Filtered stocks: \(filteredStocks)")
+        return stocks.calculateWeightedAverage(forBankId: bankId)
     }
     
     private var totalAnnualDividend: Double {

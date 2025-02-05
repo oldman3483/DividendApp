@@ -218,7 +218,7 @@ struct AddStockView: View {
     
     private func addStock() {
         
-        print("Adding stock with bankId: \(bankId)")
+        print("Debug - Using bankId: \(bankId)")  // 新增這行來確認使用的 bankId
 
         // 重置錯誤訊息
         errorMessage = ""
@@ -259,11 +259,11 @@ struct AddStockView: View {
                 frequency: unwrappedFrequency,
                 purchaseDate: purchaseDate,
                 purchasePrice: priceDouble,
-                bankId: bankId
+                bankId: selectedBankId
                 
             )
+            print("Debug - New stock: \(stock.symbol) for bank: \(stock.bankId)")
             stocks.append(stock)
-            print("Stock added: \(stock)")
             
         } else {
             // 新增到觀察清單
