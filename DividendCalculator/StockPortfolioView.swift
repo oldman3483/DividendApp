@@ -34,6 +34,7 @@ struct EditModeViewModifier: ViewModifier {
 
 struct StockPortfolioView: View {
     // MARK: - 屬性
+    @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     @Binding var isEditing: Bool
     
@@ -121,6 +122,7 @@ struct StockPortfolioView: View {
                 }
             .padding(.top, 20)  // 新增這一行
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(bankName)
@@ -130,6 +132,16 @@ struct StockPortfolioView: View {
                     Button(isEditing ? "完成" : "編輯") {
                         withAnimation {
                             isEditing.toggle()
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "cheron.left")
+                            Text("返回")
                         }
                     }
                 }
