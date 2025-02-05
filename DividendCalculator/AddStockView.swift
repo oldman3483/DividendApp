@@ -217,6 +217,9 @@ struct AddStockView: View {
     
     
     private func addStock() {
+        
+        print("Adding stock with bankId: \(bankId)")
+
         // 重置錯誤訊息
         errorMessage = ""
         
@@ -260,6 +263,7 @@ struct AddStockView: View {
                 
             )
             stocks.append(stock)
+            print("Stock added: \(stock)")
             
         } else {
             // 新增到觀察清單

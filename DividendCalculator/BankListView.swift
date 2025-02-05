@@ -20,6 +20,9 @@ struct BankListView: View {
     @State private var errorMessage: String = ""
     @State private var showingErrorAlert = false
 
+    
+    
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -38,6 +41,7 @@ struct BankListView: View {
                 
                 AddBankButton(action: { showingAddBank = true })
             }
+            
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {

@@ -8,140 +8,109 @@
 import SwiftUI
 
 struct ContentView: View {
+    // 狀態變數
     @State private var stocks: [Stock] = []
     @State private var watchlist: [WatchStock] = []
     @State private var searchText: String = ""
     @State private var isEditing = false
+    @State private var selectedBankId: UUID = UUID()
+    @State private var banks: [Bank] = []
+    
     let stockService = LocalStockService()
     
-    @State private var banks: [Bank] = []  // 新增以保存銀行列表
-    
-    
     var body: some View {
-        ZStack(alignment: .top) {
-            // 全局背景色
-            Color.white
-                .ignoresSafeArea()
+        let searchBar = SearchBarView(
+            searchText: $searchText,
+            stocks: $stocks,
+            watchlist: $watchlist,
+            bankId: selectedBankId
+        )
+        
+        let mainContent = MainTabView(
+            stocks: $stocks,
+            watchlist: $watchlist,
+            banks: $banks,
+            isEditing: $isEditing,
+            selectedBankId: $selectedBankId
+        )
+        
+        return ZStack(alignment: .top) {
+            Color.white.ignoresSafeArea()
             
             VStack(spacing: -45) {
-                
-                SearchBarView(
-                    searchText: $searchText,
-                    stocks: $stocks,
-                    watchlist: $watchlist,
-                    bankId: UUID()
-                )
-                .zIndex(1)
-                
-                TabView {
-                    NavigationStack{
-                        BankListView(banks: $banks, stocks: $stocks)
-                    }
-                    .padding(.top, 65)
-                    .tabItem {
-                        Label("庫存股", systemImage: "chart.pie.fill")
-                    }
-                    
-                    NavigationStack {
-                        WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
-                    }
-                    .padding(.top, 65)
-                    .tabItem {
-                        Label("觀察清單", systemImage: "star.fill")
-                    }
-                    
-                    NavigationStack {
-                        Text("投資總覽")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .principal) {
-                                    Text("投資總覽")
-                                        .navigationTitleStyle()
-                                }
-                            }
-                    }
-                    .padding(.top, 65)
-                    .tabItem {
-                        Label("投資總覽", systemImage: "chart.bar.fill")
-                    }
-                }
-                .onAppear{
-                    // 設置 TabView 的背景顏色
-                    let appearance = UITabBarAppearance()
-                    appearance.configureWithOpaqueBackground()
-                    appearance.backgroundColor = .white
-                    
-                    // 移除 TabBar 的上方分隔線
-                    appearance.shadowColor = nil
-
-                    
-                    UITabBar.appearance().standardAppearance = appearance
-                    UITabBar.appearance().scrollEdgeAppearance = appearance
-                    
-                    // 移除列表的分隔線
-                    UITableView.appearance().separatorStyle = .none
-                    UITableView.appearance().backgroundColor = .white
-                    
-                    // 移除導航欄底部分隔線
-                    let navigationBarAppearance = UINavigationBarAppearance()
-                    navigationBarAppearance.configureWithOpaqueBackground()
-                    navigationBarAppearance.backgroundColor = .white
-                    navigationBarAppearance.shadowColor = .clear
-                    UINavigationBar.appearance().standardAppearance = navigationBarAppearance
-                    UINavigationBar.appearance().scrollEdgeAppearance = navigationBarAppearance
-
-
-                }
+                searchBar.zIndex(1)
+                mainContent
             }
         }
         .onAppear {
-            loadData()
+            setupInitialState()
         }
-        .onChange(of: stocks) { oldValue, newValue in
+        .onChange(of: stocks) { _ in saveData() }
+        .onChange(of: watchlist) { _ in saveData() }
+        .onChange(of: banks) { newValue in
             saveData()
-        }
-        .onChange(of: watchlist) { oldValue, newValue in
-            saveData()
-        }
-        .onChange(of: banks) { oldValue, newValue in
-            saveData()
+            if let firstBank = newValue.first {
+                selectedBankId = firstBank.id
+            }
         }
     }
-
-
     
-    // Data persistence methods
-    private func saveData() {
-        if let encodedStocks = try? JSONEncoder().encode(stocks) {
-            UserDefaults.standard.set(encodedStocks, forKey: "stocks")
+    private func setupInitialState() {
+        setupAppearance()
+        loadData()
+        if let firstBank = banks.first {
+            selectedBankId = firstBank.id
         }
+    }
+    
+    private func setupAppearance() {
+        let tabBarAppearance = UITabBarAppearance()
+        tabBarAppearance.configureWithOpaqueBackground()
+        tabBarAppearance.backgroundColor = .white
+        tabBarAppearance.shadowColor = nil
         
-        if let encodedWatchlist = try? JSONEncoder().encode(watchlist) {
-            UserDefaults.standard.set(encodedWatchlist, forKey: "watchlist")
-            UserDefaults.standard.synchronize()
-        }
-        if let encodedBanks = try? JSONEncoder().encode(banks) {
-            UserDefaults.standard.set(encodedBanks, forKey: "banks")
-        }
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
         
-        UserDefaults.standard.synchronize()
-
+        UITableView.appearance().separatorStyle = .none
+        UITableView.appearance().backgroundColor = .white
+        
+        let navBarAppearance = UINavigationBarAppearance()
+        navBarAppearance.configureWithOpaqueBackground()
+        navBarAppearance.backgroundColor = .white
+        navBarAppearance.shadowColor = .clear
+        UINavigationBar.appearance().standardAppearance = navBarAppearance
+        UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
     }
     
     private func loadData() {
-        if let savedStocks = UserDefaults.standard.data(forKey: "stocks"),
-           let decodedStocks = try? JSONDecoder().decode([Stock].self, from: savedStocks) {
-            stocks = decodedStocks
+        if let data = UserDefaults.standard.data(forKey: "stocks"),
+           let decoded = try? JSONDecoder().decode([Stock].self, from: data) {
+            stocks = decoded
         }
         
-        if let savedWatchlist = UserDefaults.standard.data(forKey: "watchlist"),
-           let decodedWatchlist = try? JSONDecoder().decode([WatchStock].self, from: savedWatchlist) {
-            watchlist = decodedWatchlist
+        if let data = UserDefaults.standard.data(forKey: "watchlist"),
+           let decoded = try? JSONDecoder().decode([WatchStock].self, from: data) {
+            watchlist = decoded
         }
         
-        if let savedBanks = UserDefaults.standard.data(forKey: "banks"),
-           let decodedBanks = try? JSONDecoder().decode([Bank].self, from: savedBanks) {
-            banks = decodedBanks
+        if let data = UserDefaults.standard.data(forKey: "banks"),
+           let decoded = try? JSONDecoder().decode([Bank].self, from: data) {
+            banks = decoded
+        }
+    }
+    
+    private func saveData() {
+        if let encoded = try? JSONEncoder().encode(stocks) {
+            UserDefaults.standard.set(encoded, forKey: "stocks")
+        }
+        
+        if let encoded = try? JSONEncoder().encode(watchlist) {
+            UserDefaults.standard.set(encoded, forKey: "watchlist")
+        }
+        
+        if let encoded = try? JSONEncoder().encode(banks) {
+            UserDefaults.standard.set(encoded, forKey: "banks")
         }
     }
 }
