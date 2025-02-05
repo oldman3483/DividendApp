@@ -92,14 +92,13 @@ struct StockPortfolioView: View {
                     
                     // 股票列表區塊
                     Section {
-                        ForEach(groupedStocks) { stockInfo in
+                        ForEach(groupedStocks, id: \.symbol) { stockInfo in
                             Group {
                                 if isEditing {
                                     // 編輯模式視圖
                                     StockSummaryRow(
                                         stockInfo: stockInfo,
-                                        isEditing: true,
-                                        onDelete: { deleteStock(stockInfo) }
+                                        isEditing: true
                                     )
                                 } else {
                                     // 一般模式視圖
@@ -120,32 +119,33 @@ struct StockPortfolioView: View {
                     }
                     .listRowBackground(Color.clear)
                 }
-            .padding(.top, 20)  // 新增這一行
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(bankName)
-                        .navigationTitleStyle()
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(isEditing ? "完成" : "編輯") {
-                        withAnimation {
+                .environment(\.editMode, .constant(isEditing ? /*EditMode*/.active : /*EditMode*/.inactive))
+                .padding(.top, 20)  // 新增這一行
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text(bankName)
+                            .navigationTitleStyle()
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(isEditing ? "完成" : "編輯") {
+                            withAnimation {
                             isEditing.toggle()
+                            }
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("返回")
+                            }
                         }
                     }
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        HStack {
-                            Image(systemName: "cheron.left")
-                            Text("返回")
-                        }
-                    }
-                }
-            }
             .sheet(isPresented: $showingDetail) {
                 if let stockInfo = selectedStock {
                     StockDetailView(stockInfo: stockInfo)
@@ -163,15 +163,26 @@ struct StockPortfolioView: View {
     private func deleteStocks(at offsets: IndexSet) {
         let stocksToDelete = offsets.map { groupedStocks[$0] }
         stocks.removeAll { stock in
-            stocksToDelete.contains { $0.symbol == stock.symbol }
+            stocksToDelete.contains { weightedStock in
+                weightedStock.symbol == stock.symbol && stock.bankId == bankId
+            }
         }
     }
     
+    // 更新移動方法
     private func moveStocks(from source: IndexSet, to destination: Int) {
         var sortOrder = groupedStocks.map { $0.symbol }
         sortOrder.move(fromOffsets: source, toOffset: destination)
+        
+        // 建立排序順序字典
         let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
-        stocks.sort { (stock1, stock2) in
+        
+        // 根據新的順序排序股票
+
+        stocks = stocks.sorted { (stock1, stock2) in
+            guard stock1.bankId == bankId, stock2.bankId == bankId else {
+                return false
+            }
             let index1 = orderDict[stock1.symbol] ?? 0
             let index2 = orderDict[stock2.symbol] ?? 0
             return index1 < index2
@@ -183,8 +194,6 @@ struct StockPortfolioView: View {
 struct StockSummaryRow: View {
     let stockInfo: WeightedStockInfo
     let isEditing: Bool
-    var onDelete: (() -> Void)? = nil
-
 
     
     var body: some View {
@@ -230,20 +239,33 @@ struct StockSummaryRow: View {
             }
             // 非編輯模式顯示箭頭，編輯模式顯示編輯圖示
             if !isEditing {
+//                Menu {
+//                    Button(role: .destructive) {
+//                        onDelete?()
+//                    } label: {
+//                        Label("刪除", systemImage: "trash")
+//                    }
+//                } label: {
+//                    Image(systemName: "ellipsis.circle")
+//                        .foregroundColor(.blue)
+//                }
                 Image(systemName: "chevron.right")
                     .foregroundColor(.gray)
                     .font(.system(size: 14, weight: .semibold))
-            } else {
-                Image(systemName: "pencil")
-                    .foregroundColor(.blue)
-                    .bodyStyle()
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            onDelete?()
-                        } label: {
-                            Label("刪除", systemImage: "trash")
-                        }
-                    }
+//            } else {
+//                Image(systemName: "chevron.right")
+//                    .foregroundColor(.gray)
+//                    .font(.system(size: 14, weight: .semibold))
+//                Image(systemName: "pencil")
+//                    .foregroundColor(.blue)
+//                    .bodyStyle()
+//                    .contextMenu {
+//                        Button(role: .destructive) {
+//                            onDelete?()
+//                        } label: {
+//                            Label("刪除", systemImage: "trash")
+//                        }
+//                    }
             }
         }
         .padding(.vertical, 4)
