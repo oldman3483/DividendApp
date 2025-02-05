@@ -17,7 +17,7 @@ struct BankListContent: View {
     
     var body: some View {
         List {
-            ForEach(banks) { bank in
+            ForEach(Array(banks.enumerated()), id: \.element.id) { index, bank in
                 ZStack {
                     BankCardView(
                         bank: bank,
@@ -28,7 +28,6 @@ struct BankListContent: View {
                         NavigationLink(
                             destination: StockPortfolioView(
                                 stocks: $stocks,
-                                isEditing: .constant(false),
                                 bankId: bank.id,
                                 bankName: bank.name
                             )

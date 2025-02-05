@@ -5,9 +5,14 @@
 //  Created by Heidie Lee on 2025/1/31.
 //
 
+//
+//  BankListView.swift
+//  DividendCalculator
+//
+//  Created by Heidie Lee on 2025/1/31.
+//
+
 import SwiftUI
-
-
 
 struct BankListView: View {
     @Binding var banks: [Bank]
@@ -19,37 +24,64 @@ struct BankListView: View {
     @State private var newBankName = ""
     @State private var errorMessage: String = ""
     @State private var showingErrorAlert = false
-
-    
-    
     
     var body: some View {
         NavigationStack {
             ZStack {
-                BankListContent(
-                    banks: $banks,
-                    stocks: $stocks,
-                    isEditing: isEditing,
-                    onRename: { bank in
-                        bankToRename = bank
-                        newBankName = bank.name
-                        showingRenameAlert = true
-                    },
-                    onDelete: deleteBank,
-                    onMove: moveBanks
-                )
+                List {
+                    ForEach(banks) { bank in
+                        ZStack {
+                            BankCardView(
+                                bank: bank,
+                                isEditing: isEditing,
+                                onRename: { bank in
+                                    bankToRename = bank
+                                    newBankName = bank.name
+                                    showingRenameAlert = true
+                                }
+                            )
+                            if !isEditing {
+                                NavigationLink(
+                                    destination: StockPortfolioView(
+                                        stocks: $stocks,
+                                        bankId: bank.id,
+                                        bankName: bank.name
+                                    )
+                                ) {
+                                    EmptyView()
+                                }
+                                .opacity(0)
+                            }
+                        }
+                        .listRowBackground(Color.white)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparator(.hidden)
+                    }
+                    .onDelete(perform: deleteBank)
+                    .onMove(perform: moveBanks)
+                }
+                .listStyle(PlainListStyle())
+                .listRowSpacing(10)
+                .background(Color.white)
+                
+                if banks.isEmpty {
+                    VStack {
+                        Text("尚未新增任何銀行")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
                 
                 AddBankButton(action: { showingAddBank = true })
             }
-            
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("我的銀行")
                         .navigationTitleStyle()
                 }
-            }
-            .toolbar {
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !banks.isEmpty {
                         Button(isEditing ? "完成" : "編輯") {
@@ -85,6 +117,8 @@ struct BankListView: View {
         .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
     }
     
+    // MARK: - 私有方法
+    
     private func deleteBank(at offsets: IndexSet) {
         let banksToDelete = offsets.map { banks[$0] }
         stocks.removeAll { stock in
@@ -105,7 +139,7 @@ struct BankListView: View {
             showingErrorAlert = true
             return
         }
-                
+        
         if let bank = bankToRename,
            let bankIndex = banks.firstIndex(where: { $0.id == bank.id }) {
             if banks.contains(where: { $0.name == trimmedName && $0.id != bank.id }) {
@@ -131,7 +165,6 @@ struct BankListView: View {
         showingRenameAlert = false
     }
 }
-
 
 #Preview {
     ContentView()

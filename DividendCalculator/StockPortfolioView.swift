@@ -36,7 +36,7 @@ struct StockPortfolioView: View {
     // MARK: - 屬性
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
-    @Binding var isEditing: Bool
+    @State private var isEditing = false
     
     let bankId: UUID
     let bankName: String
@@ -55,11 +55,7 @@ struct StockPortfolioView: View {
         }
     }
     private var groupedStocks: [WeightedStockInfo] {
-        print("Debug - Current bankId: \(bankId)")
-        print("Debug - All stocks: \(stocks)")
-        let filteredStocks = stocks.filter { $0.bankId == bankId }
-        print("Debug - Filtered stocks: \(filteredStocks)")
-        return stocks.calculateWeightedAverage(forBankId: bankId)
+        stocks.calculateWeightedAverage(forBankId: bankId)
     }
     
     private var totalAnnualDividend: Double {
@@ -71,81 +67,83 @@ struct StockPortfolioView: View {
     // MARK: - 視圖主體
     var body: some View {
         NavigationStack {
-                List {
-                    // 總覽區塊
-                    Section {
-                        HStack {
-                            Text("總持股數")
-                            Spacer()
-                            Text("\(groupedStocks.count) 檔")
-                                .foregroundColor(.gray)
-                        }
-                        
-                        HStack {
-                            Text("預估年化股利")
-                            Spacer()
-                            Text("$\(String(format: "%.0f", totalAnnualDividend))")
-                                .foregroundColor(.green)
-                        }
+            List {
+                // 總覽區塊
+                Section {
+                    HStack {
+                        Text("總持股數")
+                        Spacer()
+                        Text("\(groupedStocks.count) 檔")
+                            .foregroundColor(.gray)
                     }
-                    .listRowBackground(Color.clear)
                     
-                    // 股票列表區塊
-                    Section {
-                        ForEach(groupedStocks, id: \.symbol) { stockInfo in
-                            Group {
-                                if isEditing {
-                                    // 編輯模式視圖
+                    HStack {
+                        Text("預估年化股利")
+                        Spacer()
+                        Text("$\(String(format: "%.0f", totalAnnualDividend))")
+                            .foregroundColor(.green)
+                    }
+                }
+                .listRowBackground(Color.clear)
+                
+                // 股票列表區塊
+                Section {
+                    ForEach(groupedStocks, id: \.symbol) { stockInfo in
+                        Group {
+                            if isEditing {
+                                // 編輯模式視圖
+                                StockSummaryRow(
+                                    stockInfo: stockInfo,
+                                    isEditing: true
+                                )
+                            } else {
+                                // 一般模式視圖
+                                Button(action: {
+                                    selectedStock = stockInfo
+                                    showingDetail = true
+                                }) {
                                     StockSummaryRow(
                                         stockInfo: stockInfo,
-                                        isEditing: true
-                                    )
-                                } else {
-                                    // 一般模式視圖
-                                    Button(action: {
-                                        selectedStock = stockInfo
-                                        showingDetail = true
-                                    }) {
-                                        StockSummaryRow(stockInfo: stockInfo, isEditing: false)
-                                    }
-                                    .foregroundColor(.primary)
+                                        isEditing: false)
                                 }
+                                .foregroundColor(.primary)
                             }
-                            .modifier(EditModeViewModifier(isEditing: isEditing))
-                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                         }
-                        .onDelete(perform: isEditing ? deleteStocks : nil)
-                        .onMove(perform: isEditing ? moveStocks : nil)
+                        .modifier(EditModeViewModifier(isEditing: isEditing))
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
-                    .listRowBackground(Color.clear)
+                    .onDelete(perform: isEditing ? deleteStocks : nil)
+                    .onMove(perform: isEditing ? moveStocks : nil)
                 }
-                .environment(\.editMode, .constant(isEditing ? /*EditMode*/.active : /*EditMode*/.inactive))
-                .padding(.top, 20)  // 新增這一行
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarBackButtonHidden(true)
-                .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        Text(bankName)
-                            .navigationTitleStyle()
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(isEditing ? "完成" : "編輯") {
-                            withAnimation {
+                .listRowBackground(Color.clear)
+            }
+            .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
+            .padding(.top, 20)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(bankName)
+                        .navigationTitleStyle()
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(isEditing ? "完成" : "編輯") {
+                        withAnimation {
                             isEditing.toggle()
-                            }
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: {
-                            dismiss()
-                        }) {
-                            HStack {
-                                Image(systemName: "chevron.left")
-                                Text("返回")
-                            }
                         }
                     }
                 }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        HStack {
+                            Image(systemName: "chevron.left")
+                            Text("返回")
+                        }
+                    }
+                }
+            }
             .sheet(isPresented: $showingDetail) {
                 if let stockInfo = selectedStock {
                     StockDetailView(stockInfo: stockInfo)
@@ -154,12 +152,8 @@ struct StockPortfolioView: View {
         }
     }
     
-    private func deleteStock(_ stockInfo: WeightedStockInfo) {
-        stocks.removeAll { stock in
-            stockInfo.symbol == stock.symbol && stock.bankId == bankId
-        }
-    }
     // MARK: - 輔助方法
+
     private func deleteStocks(at offsets: IndexSet) {
         let stocksToDelete = offsets.map { groupedStocks[$0] }
         stocks.removeAll { stock in
@@ -202,6 +196,7 @@ struct StockSummaryRow: View {
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(.gray)
                     .font(.system(size: 16, weight: .regular))
+                    .transition(.scale)
             }
             
             VStack(alignment: .leading, spacing: 8) {
@@ -239,33 +234,9 @@ struct StockSummaryRow: View {
             }
             // 非編輯模式顯示箭頭，編輯模式顯示編輯圖示
             if !isEditing {
-//                Menu {
-//                    Button(role: .destructive) {
-//                        onDelete?()
-//                    } label: {
-//                        Label("刪除", systemImage: "trash")
-//                    }
-//                } label: {
-//                    Image(systemName: "ellipsis.circle")
-//                        .foregroundColor(.blue)
-//                }
                 Image(systemName: "chevron.right")
                     .foregroundColor(.gray)
                     .font(.system(size: 14, weight: .semibold))
-//            } else {
-//                Image(systemName: "chevron.right")
-//                    .foregroundColor(.gray)
-//                    .font(.system(size: 14, weight: .semibold))
-//                Image(systemName: "pencil")
-//                    .foregroundColor(.blue)
-//                    .bodyStyle()
-//                    .contextMenu {
-//                        Button(role: .destructive) {
-//                            onDelete?()
-//                        } label: {
-//                            Label("刪除", systemImage: "trash")
-//                        }
-//                    }
             }
         }
         .padding(.vertical, 4)
