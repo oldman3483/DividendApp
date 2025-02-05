@@ -146,7 +146,10 @@ struct StockPortfolioView: View {
             }
             .sheet(isPresented: $showingDetail) {
                 if let stockInfo = selectedStock {
-                    StockDetailView(stockInfo: stockInfo)
+                    StockDetailView(
+                        stocks: $stocks,
+                        stockInfo: stockInfo
+                    )
                 }
             }
         }
