@@ -16,8 +16,8 @@ struct BankCardView: View {
         HStack {
             Text(bank.name)
                 .heading3Style()
-                .padding(.vertical, 10)
-                .padding(.horizontal, isEditing ? 8 : 16)
+//                .padding(.vertical, 10)
+//                .padding(.horizontal, isEditing ? 8 : 16)
                 .foregroundColor(.black)
             Spacer()
             
@@ -26,9 +26,15 @@ struct BankCardView: View {
                     Image(systemName: "pencil.circle")
                         .foregroundColor(.blue)
                 }
-                .padding(.trailing, 8)
+                .padding(.trailing, 7)
+            } else {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.system(size: 14, weight: .semibold))
             }
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
         .frame(maxWidth: .infinity)
         .background(.white)
         .cornerRadius(5)
@@ -46,24 +52,5 @@ struct BankCardView: View {
 }
 
 #Preview {
-    // 創建一個示例銀行用於預覽
-    let sampleBank = Bank(name: "測試銀行")
-    
-    return VStack(spacing: 20) {
-        // 非編輯模式的預覽
-        BankCardView(
-            bank: sampleBank,
-            isEditing: false,
-            onRename: { _ in }
-        )
-        
-        // 編輯模式的預覽
-        BankCardView(
-            bank: sampleBank,
-            isEditing: true,
-            onRename: { _ in }
-        )
-    }
-    .padding()
-    .background(Color.gray.opacity(0.1))
+    ContentView()
 }

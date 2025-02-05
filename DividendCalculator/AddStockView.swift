@@ -108,13 +108,12 @@ struct AddStockView: View {
                             Task {
                                 await loadStockPrice()
                             }
-                            if isLoadingPrice {
-                                ProgressView()
-                                    .progressViewStyle(.circular)
-                            } else {
-                                TextField("收盤價", text: $purchasePrice)
-                                    .keyboardType(.decimalPad)
-                            }
+                        }
+                        if isLoadingPrice {
+                            ProgressView()
+                        } else {
+                            TextField("收盤價", text: $purchasePrice)
+                                .keyboardType(.decimalPad)
                         }
                     }
                     

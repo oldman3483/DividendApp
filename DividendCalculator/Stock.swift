@@ -157,12 +157,10 @@ extension Array where Element == Stock {
     
     // 計算加權平均數據
     func calculateWeightedAverage(forBankId bankId: UUID? = nil) -> [WeightedStockInfo] {
-        let filteredStocks = self.filter { stock in
-            stock.bankId == bankId
-        }
+        let stocks = bankId != nil ? self.filter { $0.bankId == bankId } : self
         
         
-        let groupedStocks = self.groupedBySymbol()
+        let groupedStocks = stocks.groupedBySymbol()
         
         return groupedStocks.map { symbol, stocks in
             let totalShares = stocks.reduce(0) { $0 + $1.shares }
