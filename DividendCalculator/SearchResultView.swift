@@ -81,7 +81,7 @@ struct SearchResultView: View {
             .task {
                 await searchStocks()
             }
-            .onChange(of: showingAddStockView) { oldValue, newValue in
+            .onChange(of: showingAddStockView) { oldValue,newValue in
                 print("showingAddStockView: \(newValue)") // 添加調試輸出
                 print("selectedSymbol: \(selectedSymbol)") // 添加調試輸出
                 print("selectedName: \(selectedName)") // 添加調試輸出
