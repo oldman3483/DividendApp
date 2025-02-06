@@ -116,6 +116,7 @@ struct StockPortfolioView: View {
                     .onMove(perform: isEditing ? moveStocks : nil)
                 }
                 .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
             .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
             .padding(.top, 20)
