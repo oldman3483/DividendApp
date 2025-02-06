@@ -16,14 +16,14 @@ struct EditModeViewModifier: ViewModifier {
         content
             .padding(.vertical, 8)
             .padding(.horizontal, 16)
-            .background(Color.white)
+            .background(Color.clear.opacity(0.3))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isEditing ? Color.blue.opacity(0.3) : Color.clear, lineWidth: 1)
             )
             .shadow(
-                color: isEditing ? Color.blue.opacity(0.1) : Color.gray.opacity(0.1),
+                color: isEditing ? Color.blue.opacity(0.1) : Color.white.opacity(0.1),
                 radius: isEditing ? 8 : 2,
                 x: 0,
                 y: isEditing ? 4 : 1
@@ -72,6 +72,7 @@ struct StockPortfolioView: View {
                 Section {
                     HStack {
                         Text("總持股數")
+                            .foregroundColor(.white)
                         Spacer()
                         Text("\(groupedStocks.count) 檔")
                             .foregroundColor(.gray)
@@ -79,6 +80,7 @@ struct StockPortfolioView: View {
                     
                     HStack {
                         Text("預估年化股利")
+                            .foregroundColor(.white)
                         Spacer()
                         Text("$\(String(format: "%.0f", totalAnnualDividend))")
                             .foregroundColor(.green)
@@ -115,9 +117,10 @@ struct StockPortfolioView: View {
                     .onDelete(perform: isEditing ? deleteStocks : nil)
                     .onMove(perform: isEditing ? moveStocks : nil)
                 }
-                .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             }
+            .listRowSpacing(10)
+            .listRowBackground(Color.clear)
             .environment(\.editMode, .constant(isEditing ? EditMode.active : EditMode.inactive))
             .padding(.top, 20)
             .navigationBarTitleDisplayMode(.inline)

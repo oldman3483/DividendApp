@@ -16,9 +16,7 @@ struct BankCardView: View {
         HStack {
             Text(bank.name)
                 .heading3Style()
-//                .padding(.vertical, 10)
-//                .padding(.horizontal, isEditing ? 8 : 16)
-                .foregroundColor(.black)
+                .foregroundColor(.white)
             Spacer()
             
             if isEditing {
@@ -36,14 +34,14 @@ struct BankCardView: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 18)
         .frame(maxWidth: .infinity)
-        .background(.white)
+        .background(Color.black.opacity(0.3))
         .cornerRadius(5)
         .overlay(
             RoundedRectangle(cornerRadius: 5)
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
         .shadow(
-            color: Color.black.opacity(0.1),
+            color: Color.white.opacity(0.1),
             radius: 3,
             x: 0,
             y: 2

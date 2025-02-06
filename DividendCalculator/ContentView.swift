@@ -8,17 +8,29 @@
 import SwiftUI
 
 struct ContentView: View {
-    // 狀態變數
+    // MARK: - 狀態變數
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
     @State private var stocks: [Stock] = []
     @State private var watchlist: [WatchStock] = []
     @State private var searchText: String = ""
     @State private var isEditing = false
     @State private var selectedBankId: UUID = UUID()
     @State private var banks: [Bank] = []
+    @State private var showingLogoutAlert = false
     
     let stockService = LocalStockService()
     
+    // MARK: - 視圖
     var body: some View {
+        if !isLoggedIn {
+            LoginView()
+        } else {
+            mainContent
+        }
+    }
+    
+    // MARK: - 主要內容視圖
+    private var mainContent: some View {
         let searchBar = SearchBarView(
             searchText: $searchText,
             stocks: $stocks,
@@ -35,12 +47,31 @@ struct ContentView: View {
         )
         
         return ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color.black.ignoresSafeArea()
             
             VStack(spacing: -45) {
                 searchBar.zIndex(1)
                 mainContent
             }
+            
+            // 登出按鈕
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: { showingLogoutAlert = true }) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .foregroundColor(.gray)
+                            .padding()
+                    }
+                }
+                Spacer()
+            }
+        }
+        .alert("登出確認", isPresented: $showingLogoutAlert) {
+            Button("取消", role: .cancel) { }
+            Button("登出", role: .destructive) { handleLogout() }
+        } message: {
+            Text("確定要登出嗎？")
         }
         .onAppear {
             setupInitialState()
@@ -55,6 +86,7 @@ struct ContentView: View {
         }
     }
     
+    // MARK: - 方法
     private func setupInitialState() {
         setupAppearance()
         loadData()
@@ -66,18 +98,18 @@ struct ContentView: View {
     private func setupAppearance() {
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
-        tabBarAppearance.backgroundColor = .white
+        tabBarAppearance.backgroundColor = .black
         tabBarAppearance.shadowColor = nil
         
         UITabBar.appearance().standardAppearance = tabBarAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
         
         UITableView.appearance().separatorStyle = .none
-        UITableView.appearance().backgroundColor = .white
+        UITableView.appearance().backgroundColor = .black
         
         let navBarAppearance = UINavigationBarAppearance()
         navBarAppearance.configureWithOpaqueBackground()
-        navBarAppearance.backgroundColor = .white
+        navBarAppearance.backgroundColor = .black
         navBarAppearance.shadowColor = .clear
         UINavigationBar.appearance().standardAppearance = navBarAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navBarAppearance
@@ -113,9 +145,22 @@ struct ContentView: View {
             UserDefaults.standard.set(encoded, forKey: "banks")
         }
     }
+    
+    private func handleLogout() {
+        // 清除登入狀態
+        isLoggedIn = false
+        
+        // 可以選擇是否要清除資料
+        // 如果要保留資料，可以不執行以下程式碼
+        stocks = []
+        watchlist = []
+        banks = []
+        UserDefaults.standard.removeObject(forKey: "stocks")
+        UserDefaults.standard.removeObject(forKey: "watchlist")
+        UserDefaults.standard.removeObject(forKey: "banks")
+    }
 }
 
 #Preview {
     ContentView()
 }
-

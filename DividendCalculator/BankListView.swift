@@ -5,12 +5,6 @@
 //  Created by Heidie Lee on 2025/1/31.
 //
 
-//
-//  BankListView.swift
-//  DividendCalculator
-//
-//  Created by Heidie Lee on 2025/1/31.
-//
 
 import SwiftUI
 
@@ -53,7 +47,7 @@ struct BankListView: View {
                                 .opacity(0)
                             }
                         }
-                        .listRowBackground(Color.white)
+                        .listRowBackground(Color.black)
                         .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                         .listRowSeparator(.hidden)
                     }
@@ -62,13 +56,13 @@ struct BankListView: View {
                 }
                 .listStyle(PlainListStyle())
                 .listRowSpacing(10)
-                .background(Color.white)
+                .background(Color.black)
                 
                 if banks.isEmpty {
                     VStack {
                         Text("尚未新增任何銀行")
                             .font(.headline)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.white)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -89,6 +83,7 @@ struct BankListView: View {
                                 isEditing.toggle()
                             }
                         }
+                        .foregroundColor(.white)
                     }
                 }
             }

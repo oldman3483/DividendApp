@@ -37,7 +37,6 @@ struct BankListContent: View {
                         .opacity(0)
                     }
                 }
-                .listRowBackground(Color.white)
                 .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                 .listRowSeparator(.hidden)
             }
@@ -46,6 +45,5 @@ struct BankListContent: View {
         }
         .listStyle(PlainListStyle())
         .listRowSpacing(10)
-        .background(Color.white)
     }
 }

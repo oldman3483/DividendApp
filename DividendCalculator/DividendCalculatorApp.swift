@@ -12,7 +12,7 @@ struct DividendCalculatorApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.light) // 強制使用淺色模式
+                .preferredColorScheme(.dark) // 強制使用深色模式
 
         }
     }

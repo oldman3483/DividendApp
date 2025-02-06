@@ -28,29 +28,42 @@ struct FontSize {
 extension View {
     func navigationTitleStyle() -> some View {
         self.font(.system(size: FontSize.navigationTitle, weight: .bold))
+            .foregroundColor(.white)
     }
     
     func heading1Style() -> some View {
         self.font(.system(size: FontSize.heading1, weight: .semibold))
+            .foregroundColor(.white)
+
     }
     
     func heading2Style() -> some View {
         self.font(.system(size: FontSize.heading2, weight: .semibold))
+            .foregroundColor(.white)
+
     }
     
     func heading3Style() -> some View {
         self.font(.system(size: FontSize.heading3, weight: .medium))
+            .foregroundColor(.white)
+
     }
     
     func bodyStyle() -> some View {
         self.font(.system(size: FontSize.body))
+            .foregroundColor(.white)
+
     }
     
     func subtextStyle() -> some View {
         self.font(.system(size: FontSize.subtext))
+            .foregroundColor(.white)
+
     }
     
     func captionStyle() -> some View {
         self.font(.system(size: FontSize.caption))
+            .foregroundColor(.white)
+
     }
 }

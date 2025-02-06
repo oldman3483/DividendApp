@@ -33,7 +33,7 @@ struct WatchlistView: View {
                                 .padding(.horizontal, 15)
                                 .padding(.vertical, 8)
                                 .background(selectedList == index ? Color.blue : Color.gray.opacity(0.2))
-                                .foregroundColor(selectedList == index ? .white : .black)
+                                .foregroundColor(selectedList == index ? .white : .white)
                                 .cornerRadius(20)
                         }
                     }
@@ -49,7 +49,7 @@ struct WatchlistView: View {
                 }
                 .padding()
             }
-            .background(Color.white)
+            .background(Color.clear)
             
             // 股票列表
             List {
@@ -57,7 +57,7 @@ struct WatchlistView: View {
                     Text("尚無觀察股票")
                         .foregroundColor(.gray)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .listRowBackground(Color.clear)
+                        .listRowBackground(Color.black)
                 } else {
                     ForEach(watchlist.filter { $0.listNames == selectedList }) { stock in
                         HStack {
@@ -65,15 +65,35 @@ struct WatchlistView: View {
                                 HStack {
                                     Text(stock.symbol)
                                         .font(.headline)
+                                        .foregroundColor(.white)
                                     Text(stock.name)
                                         .foregroundColor(.gray)
                                 }
                             }
                         }
+                        .listRowSeparator(.hidden)
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 18)
+                        .background(Color.black.opacity(0.3))  // 與銀行卡片相同的背景色
+                        .cornerRadius(5)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 5)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
+                        .shadow(
+                            color: Color.white.opacity(0.1),
+                            radius: 3,
+                            x: 0,
+                            y: 2
+                        )
+                        .listRowBackground(Color.black)  // 列表背景改為黑色
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
                     .onDelete(perform: removeFromWatchlist)
                 }
             }
+            .listStyle(PlainListStyle())
+            .background(Color.black)
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -92,6 +112,7 @@ struct WatchlistView: View {
                     })
                 } label: {
                     Image(systemName: "ellipsis.circle")
+                        .foregroundColor(.white)
                 }
                 .disabled(listNames.count <= 1)
             }
@@ -102,17 +123,22 @@ struct WatchlistView: View {
                     TextField("清單名稱", text: $newListName)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled(true)
+                        .foregroundColor(.white)
                 }
+                .scrollContentBackground(.hidden)  // 隱藏 Form 的預設背景
+                .background(Color.black)  // Form 背景改為黑色
                 .navigationTitle("新增觀察清單")
                 .navigationBarItems(
                     leading: Button("取消") {
                         showingAddList = false
                         newListName = ""
-                    },
+                    }
+                        .foregroundColor(.white),
                     trailing: Button("新增") {
                         addNewList()
                     }
                     .disabled(newListName.isEmpty)
+                    .foregroundColor(.white)
                 )
             }
         }
@@ -120,6 +146,7 @@ struct WatchlistView: View {
             TextField("新名稱", text: $newListName)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
+                .foregroundColor(.white)
             Button("取消", role: .cancel) {
                 newListName = ""
             }
@@ -134,6 +161,7 @@ struct WatchlistView: View {
             }
         } message: {
             Text("確定要刪除「\(listNames[selectedList])」嗎？此操作無法復原。")
+                .foregroundColor(.white)
         }
     }
     
@@ -214,25 +242,5 @@ struct WatchlistView_Previews: PreviewProvider {
                 isEditing: .constant(false)
             )
         }
-    }
-}
-
-#Preview {
-    NavigationStack {
-        WatchlistView(
-            watchlist: .constant([
-                WatchStock(
-                    symbol: "2330",
-                    name: "台積電",
-                    listIndex: 0
-                ),
-                WatchStock(
-                    symbol: "2317",
-                    name: "鴻海",
-                    listIndex: 0
-                )
-            ]),
-            isEditing: .constant(false)
-        )
     }
 }
