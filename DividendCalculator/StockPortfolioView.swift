@@ -148,7 +148,8 @@ struct StockPortfolioView: View {
                 if let stockInfo = selectedStock {
                     StockDetailView(
                         stocks: $stocks,
-                        stockInfo: stockInfo
+                        symbol: stockInfo.symbol,
+                        bankId: bankId
                     )
                 }
             }

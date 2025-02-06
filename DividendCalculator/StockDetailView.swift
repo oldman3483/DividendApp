@@ -23,16 +23,25 @@ struct SummaryRow: View {
 }
 
 struct StockDetailView: View {
+    
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     
-    let stockInfo: WeightedStockInfo
-    
+    let symbol: String
+    let bankId: UUID
+
     @State private var isEditing = false
     @State private var showingDeleteAlert = false
     @State private var selectedStock: Stock?
     @State private var editingShares: String = ""
     @State private var showingSharesAlert = false
+    @State private var errorMessage: String = ""
+    @State private var showingErrorAlert = false
+    
+    private var stockInfo: WeightedStockInfo {
+        let filteredStocks = stocks.filter { $0.symbol == symbol && $0.bankId == bankId }
+        return filteredStocks.calculateWeightedAverage(forBankId: bankId).first!
+    }
     
     var body: some View {
         NavigationStack {
@@ -142,12 +151,19 @@ struct StockDetailView: View {
             .alert("修改持股數量", isPresented: $showingSharesAlert) {
                 TextField("持股數量", text: $editingShares)
                     .keyboardType(.numberPad)
-                Button("取消", role: .cancel) {}
+                Button("取消", role: .cancel) {
+                    editingShares = ""
+                }
                 Button("確定") {
                     updateShares()
                 }
             } message: {
                 Text("請輸入新的持股數量")
+            }
+            .alert("錯誤", isPresented: $showingErrorAlert) {
+                Button("確定",role: .cancel) {}
+            } message: {
+                Text("errorMessage")
             }
         }
     }
@@ -167,14 +183,51 @@ struct StockDetailView: View {
     }
     
     private func updateShares() {
-        guard let stock = selectedStock,
-              let newShares = Int(editingShares),
-              newShares > 0 else {
+        
+        guard let newShares = Int(editingShares) else {
+            showingErrorAlert = true
+            errorMessage = "請輸入有效數字"
             return
         }
         
-        if let index = stocks.firstIndex(where: { $0.id == stock.id }) {
-            stocks[index].shares = newShares
+        guard newShares > 0 else {
+            errorMessage = "持股數量必須大於0"
+            showingErrorAlert = true
+            return
+        }
+        
+        
+        // 更新股票資料
+        if let stock = selectedStock,
+           let index = stocks.firstIndex(where: { $0.id == stock.id }) {
+            // 創建完全新的 Stock 實例
+            let updatedStock = Stock(
+                id: stock.id,
+                symbol: stock.symbol,
+                name: stock.name,
+                shares: newShares,
+                dividendPerShare: stock.dividendPerShare,
+                dividendYear: stock.dividendYear,
+                isHistorical: stock.isHistorical,
+                frequency: stock.frequency,
+                purchaseDate: stock.purchaseDate,
+                purchasePrice: stock.purchasePrice,
+                bankId: stock.bankId
+            )
+            
+            // 更新數組
+            DispatchQueue.main.async {
+                stocks.remove(at: index)
+                stocks.insert(updatedStock, at: index)
+                
+                // 清除暫存資料
+                selectedStock = nil
+                editingShares = ""
+                
+                // 強制更新視圖
+                isEditing = false
+                isEditing = true
+            }
         }
     }
 }
