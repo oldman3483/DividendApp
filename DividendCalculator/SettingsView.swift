@@ -98,7 +98,7 @@ struct SettingsView: View {
                 }
             }
         }
-        .padding(.top, 65)
+        .padding(.top, 30)
         .alert("登出確認", isPresented: $showingLogoutAlert) {
             Button("取消", role: .cancel) { }
             Button("登出", role: .destructive) {

@@ -53,6 +53,7 @@ struct MainTabView: View {
             NavigationStack {
                 NewsView()
             }
+            .padding(.top, 65)
             .tabItem {
                 Label("最新資訊", systemImage: "newspaper.fill")
             }
@@ -60,9 +61,15 @@ struct MainTabView: View {
             NavigationStack {
                 SettingsView()
             }
+            .padding(.top, 65)
             .tabItem {
                 Label("更多設定", systemImage: "gearshape.fill")
             }
         }
     }
 }
+
+#Preview {
+    ContentView()
+}
+
