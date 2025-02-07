@@ -11,7 +11,7 @@ import UIKit
 struct DismissKeyboardModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .gesture(
+            .simultaneousGesture(
                 TapGesture()
                     .onEnded { _ in
                         endEditing()

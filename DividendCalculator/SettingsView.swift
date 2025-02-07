@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("dividendNotification") private var dividendNotification = true
+    @AppStorage("priceNotification") private var priceNotification = true
     @State private var showingLogoutAlert = false
     @State private var showingClearDataAlert = false
     
@@ -32,7 +34,7 @@ struct SettingsView: View {
                 
                 // 應用程式設定
                 Section {
-                    Toggle(isOn: .constant(true)) {
+                    Toggle(isOn: $dividendNotification) {
                         HStack {
                             Image(systemName: "bell.fill")
                                 .foregroundColor(.blue)
@@ -40,7 +42,7 @@ struct SettingsView: View {
                         }
                     }
                     
-                    Toggle(isOn: .constant(true)) {
+                    Toggle(isOn: $priceNotification) {
                         HStack {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                                 .foregroundColor(.blue)
@@ -116,12 +118,14 @@ struct SettingsView: View {
     }
     
     private func clearAllData() {
-        // 清除 UserDefaults 中的所有資料
-        if let bundleID = Bundle.main.bundleIdentifier {
-            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+                // 重置通知設定
+                dividendNotification = true
+                priceNotification = true
+            }
         }
     }
-}
 
 #Preview {
     SettingsView()

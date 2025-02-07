@@ -49,22 +49,20 @@ struct MainTabView: View {
             .tabItem {
                 Label("投資總覽", systemImage: "chart.bar.fill")
             }
-            
             // Tab 4: 最新資訊
-            NewsView()
-                .tabItem {
-                    Label("最新資訊", systemImage: "newspaper.fill")
-                }
-            
+            NavigationStack {
+                NewsView()
+            }
+            .tabItem {
+                Label("最新資訊", systemImage: "newspaper.fill")
+            }
             // Tab 5: 更多設定
-            SettingsView()
-                .tabItem {
-                    Label("更多設定", systemImage: "gearshape.fill")
-                }
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem {
+                Label("更多設定", systemImage: "gearshape.fill")
+            }
         }
     }
-}
-
-#Preview {
-    ContentView()
 }

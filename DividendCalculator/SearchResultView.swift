@@ -11,6 +11,7 @@ struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
     
     let stockService = LocalStockService()
     @State private var searchResults: [SearchStock] = []
@@ -63,6 +64,7 @@ struct SearchResultView: View {
                     AddStockView(
                         stocks: $stocks,
                         watchlist: $watchlist,
+                        banks: $banks,
                         initialSymbol: selectedSymbol,
                         initialName: selectedName,
                         bankId: bankId ?? UUID()

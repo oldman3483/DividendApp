@@ -35,6 +35,7 @@ struct ContentView: View {
             searchText: $searchText,
             stocks: $stocks,
             watchlist: $watchlist,
+            banks: $banks,
             bankId: selectedBankId
         )
         
@@ -52,19 +53,6 @@ struct ContentView: View {
             VStack(spacing: -45) {
                 searchBar.zIndex(1)
                 mainContent
-            }
-            
-            // 登出按鈕
-            VStack {
-                HStack {
-                    Spacer()
-                    Button(action: { showingLogoutAlert = true }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .foregroundColor(.gray)
-                            .padding()
-                    }
-                }
-                Spacer()
             }
         }
         .alert("登出確認", isPresented: $showingLogoutAlert) {
