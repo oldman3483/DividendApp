@@ -26,7 +26,7 @@ struct AddStockView: View {
     @State private var isLoadingPrice: Bool = false
     @State private var selectedBankId: UUID
     @State private var selectedWatchlist: String
-
+    
     
     private let localStockService = LocalStockService()
     
@@ -34,7 +34,7 @@ struct AddStockView: View {
     // 取得所有銀行列表
     @State private var banks: [Bank] = {
         if let savedBanks = UserDefaults.standard.data(forKey: "banks"),
-            let decodedBanks = try? JSONDecoder().decode([Bank].self, from: savedBanks) {
+           let decodedBanks = try? JSONDecoder().decode([Bank].self, from: savedBanks) {
             return decodedBanks
         }
         return []
@@ -74,93 +74,101 @@ struct AddStockView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                // 第一個區段：股票資訊
-                Section(header: Text("股票資訊")) {
-                    HStack{
-                        Text ("股票代號：")
-                        Text (initialSymbol)
-                            .foregroundColor(.blue)
-                    }
-                    HStack{
-                        Text ("公司名稱：")
-                        Text (initialName)
-                            .foregroundColor(.gray)
-                    }
-                }
-                
-                // 第二個區段：選擇目的地
-                Section(header: Text("存入清單")) {
-                    Picker("新增至", selection: $selectedDestination) {
-                        Text("銀行").tag("銀行")
-                        Text("觀察清單").tag("觀察清單")
-                    }
-                    
-                    if selectedDestination == "銀行" {
-                        Picker("選擇銀行", selection: $selectedBankId) {
-                            ForEach(banks) { bank in
-                                Text(bank.name).tag(bank.id)
+            GeometryReader { geometry in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        Form {
+                            // 第一個區段：股票資訊
+                            Section(header: Text("股票資訊")) {
+                                HStack{
+                                    Text ("股票代號：")
+                                    Text (initialSymbol)
+                                        .foregroundColor(.blue)
+                                }
+                                HStack{
+                                    Text ("公司名稱：")
+                                    Text (initialName)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                            
+                            // 第二個區段：選擇目的地
+                            Section(header: Text("存入清單")) {
+                                Picker("新增至", selection: $selectedDestination) {
+                                    Text("銀行").tag("銀行")
+                                    Text("觀察清單").tag("觀察清單")
+                                }
+                                
+                                if selectedDestination == "銀行" {
+                                    Picker("選擇銀行", selection: $selectedBankId) {
+                                        ForEach(banks) { bank in
+                                            Text(bank.name).tag(bank.id)
+                                        }
+                                    }
+                                } else {
+                                    Picker("選擇觀察清單", selection: $selectedWatchlist) {
+                                        ForEach(watchlistNames, id: \.self) { name in
+                                            Text(name).tag(name)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 第三個區段：只在選擇庫存股時顯示
+                            if selectedDestination == "銀行" {
+                                Section(header: Text("庫存資訊")) {
+                                    TextField("持股數量", text: $shares)
+                                        .keyboardType(.numberPad)
+                                    
+                                    HStack {
+                                        Text("每股股利")
+                                        Spacer()
+                                        Text(dividendPerShare.isEmpty ? "讀取中..." : "$\(dividendPerShare)")
+                                            .foregroundColor(.gray)
+                                    }
+                                    
+                                    HStack {
+                                        Text("發放頻率")
+                                        Spacer()
+                                        Text(getFrequencyText(frequency))
+                                            .foregroundColor(.gray)
+                                    }
+                                    
+                                    
+                                    DatePicker(
+                                        "買入日期",
+                                        selection: $purchaseDate,
+                                        displayedComponents: .date
+                                    )
+                                    .onChange(of: purchaseDate) { oldValue, newValue in
+                                        Task {
+                                            await loadStockPrice()
+                                        }
+                                    }
+                                    
+                                    HStack {
+                                        Text("收盤價")
+                                        Spacer()
+                                        if isLoadingPrice {
+                                            ProgressView()
+                                        } else {
+                                            Text(purchasePrice.isEmpty ? "讀取中..." : "$\(purchasePrice)")
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if !errorMessage.isEmpty {
+                                Section {
+                                    Text(errorMessage)
+                                        .foregroundColor(.red)
+                                }
                             }
                         }
-                    } else {
-                        Picker("選擇觀察清單", selection: $selectedWatchlist) {
-                            ForEach(watchlistNames, id: \.self) { name in
-                                Text(name).tag(name)
-                            }
-                        }
+                        .scrollContentBackground(.hidden)
                     }
-                }
-                
-                // 第三個區段：只在選擇庫存股時顯示
-                if selectedDestination == "銀行" {
-                    Section(header: Text("庫存資訊")) {
-                        TextField("持股數量", text: $shares)
-                            .keyboardType(.numberPad)
-                        
-                        HStack {
-                            Text("每股股利")
-                            Spacer()
-                            Text(dividendPerShare.isEmpty ? "讀取中..." : "$\(dividendPerShare)")
-                                .foregroundColor(.gray)
-                        }
-                        
-                        HStack {
-                            Text("發放頻率")
-                            Spacer()
-                            Text(getFrequencyText(frequency))
-                            .foregroundColor(.gray)
-                        }
-                        
-                        
-                        DatePicker(
-                            "買入日期",
-                            selection: $purchaseDate,
-                            displayedComponents: .date
-                        )
-                        .onChange(of: purchaseDate) { oldValue, newValue in
-                            Task {
-                                await loadStockPrice()
-                            }
-                        }
-                        
-                        HStack {
-                            Text("收盤價")
-                            Spacer()
-                            if isLoadingPrice {
-                                ProgressView()
-                            } else {
-                                Text(purchasePrice.isEmpty ? "讀取中..." : "$\(purchasePrice)")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-                        
-                if !errorMessage.isEmpty {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                    }
+                    .frame(minHeight: geometry.size.height)
                 }
             }
             .navigationTitle("新增股票")
@@ -171,13 +179,12 @@ struct AddStockView: View {
                 trailing: Button("新增") {
                     addStock()
                 }
-                .disabled(selectedDestination == "銀行" && shares.isEmpty)
+                    .disabled(selectedDestination == "銀行" && shares.isEmpty)
             )
         }
+        .dismissKeyboardOnTap()
         .task {
-            
-            
-            if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
+            if let dividend = await localStockService.getTaiwanStockDividend(symbol:initialSymbol) {
                 dividendPerShare = String(format: "%.2f", dividend)
             }
             if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
@@ -290,6 +297,8 @@ struct AddStockView: View {
         dismiss()
     }
 }
+
+
 #Preview {
     ContentView()
 }

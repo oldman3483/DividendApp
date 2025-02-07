@@ -4,8 +4,6 @@
 //
 //  Created by Heidie Lee on 2025/1/20.
 
-
-
 import SwiftUI
 
 struct WatchlistView: View {
@@ -18,10 +16,77 @@ struct WatchlistView: View {
     @State private var showingDeleteAlert = false
     @State private var listNames: [String] = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
     
+    // MARK: - 私有方法
+    
+    // 從觀察清單中移除股票
+    private func removeFromWatchlist(at offsets: IndexSet) {
+        let currentListStocks = watchlist.filter { $0.listNames == selectedList }
+        let toRemove = offsets.map { currentListStocks[$0] }
+        watchlist.removeAll { stock in
+            toRemove.contains { $0.id == stock.id }
+        }
+    }
+    
+    // 新增觀察清單
+    private func addNewList() {
+        var names = listNames
+        names.append(newListName)
+        self.listNames = names
+        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+        selectedList = names.count - 1
+        showingAddList = false
+        newListName = ""
+    }
+    
+    // 重新命名當前清單
+    private func renameCurrentList() {
+        if !newListName.isEmpty {
+            var names = listNames
+            names[selectedList] = newListName
+            self.listNames = names
+            UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+            newListName = ""
+        }
+    }
+    
+    // 刪除當前清單
+    private func deleteCurrentList() {
+        guard listNames.count > 1 else { return }
+        
+        // 刪除該清單中的所有股票
+        watchlist.removeAll { $0.listNames == selectedList }
+        
+        // 刪除清單名稱
+        var updatedNames = listNames
+        updatedNames.remove(at: selectedList)
+        self.listNames = updatedNames
+        
+        // 儲存更新後的清單名稱到 UserDefaults
+        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+        UserDefaults.standard.synchronize()
+        
+        // 更新剩餘股票的清單索引
+        for i in 0..<watchlist.count {
+            if watchlist[i].listNames > selectedList {
+                let updatedStock = WatchStock(
+                    id: watchlist[i].id,
+                    symbol: watchlist[i].symbol,
+                    name: watchlist[i].name,
+                    addedDate: watchlist[i].addedDate,
+                    listIndex: watchlist[i].listNames - 1
+                )
+                watchlist[i] = updatedStock
+            }
+        }
+        
+        // 如果刪除的是最後一個清單，選擇前一個清單
+        if selectedList >= listNames.count {
+            selectedList = max(0, listNames.count - 1)
+        }
+    }
     
     var body: some View {
         VStack(spacing: 0) {
-           
             // 自選清單切換按鈕
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 15) {
@@ -74,7 +139,7 @@ struct WatchlistView: View {
                         .listRowSeparator(.hidden)
                         .padding(.vertical, 12)
                         .padding(.horizontal, 18)
-                        .background(Color.black.opacity(0.3))  // 與銀行卡片相同的背景色
+                        .background(Color.black.opacity(0.3))
                         .cornerRadius(5)
                         .overlay(
                             RoundedRectangle(cornerRadius: 5)
@@ -86,7 +151,7 @@ struct WatchlistView: View {
                             x: 0,
                             y: 2
                         )
-                        .listRowBackground(Color.black)  // 列表背景改為黑色
+                        .listRowBackground(Color.black)
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
                     .onDelete(perform: removeFromWatchlist)
@@ -119,34 +184,40 @@ struct WatchlistView: View {
         }
         .sheet(isPresented: $showingAddList) {
             NavigationStack {
-                Form {
-                    TextField("清單名稱", text: $newListName)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .foregroundColor(.white)
+                GeometryReader { geometry in
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            Form {
+                                Section {
+                                    TextField("清單名稱", text: $newListName)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled(true)
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .scrollContentBackground(.hidden)
+                        }
+                        .frame(minHeight: geometry.size.height)
+                    }
                 }
-                .scrollContentBackground(.hidden)  // 隱藏 Form 的預設背景
-                .background(Color.black)  // Form 背景改為黑色
                 .navigationTitle("新增觀察清單")
                 .navigationBarItems(
                     leading: Button("取消") {
                         showingAddList = false
                         newListName = ""
-                    }
-                        .foregroundColor(.white),
+                    },
                     trailing: Button("新增") {
                         addNewList()
                     }
                     .disabled(newListName.isEmpty)
-                    .foregroundColor(.white)
                 )
             }
+            .dismissKeyboardOnTap()
         }
         .alert("重新命名清單", isPresented: $showingEditList) {
             TextField("新名稱", text: $newListName)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled(true)
-                .foregroundColor(.white)
             Button("取消", role: .cancel) {
                 newListName = ""
             }
@@ -161,86 +232,6 @@ struct WatchlistView: View {
             }
         } message: {
             Text("確定要刪除「\(listNames[selectedList])」嗎？此操作無法復原。")
-                .foregroundColor(.white)
-        }
-    }
-    
-    // 從觀察清單中移除股票
-    private func removeFromWatchlist(at offsets: IndexSet) {
-        let currentListStocks = watchlist.filter { $0.listNames == selectedList }
-        let toRemove = offsets.map { currentListStocks[$0] }
-        watchlist.removeAll { stock in
-            toRemove.contains { $0.id == stock.id }
-        }
-    }
-    
-    // 新增觀察清單
-    private func addNewList() {
-        var names = listNames
-        names.append(newListName)
-        self.listNames = names
-        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
-        selectedList = names.count - 1
-        showingAddList = false
-        newListName = ""
-    }
-    
-    // 重新命名當前清單
-    private func renameCurrentList() {
-        if !newListName.isEmpty {
-            var names = listNames
-            names[selectedList] = newListName
-            self.listNames = names
-            UserDefaults.standard.set(listNames, forKey: "watchlistNames")
-            newListName = ""
-        }
-    }
-    
-    // 刪除當前清單
-    private func deleteCurrentList() {
-        guard listNames.count > 1 else { return }
-        
-        // 刪除該清單中的所有股票
-        watchlist.removeAll { $0.listNames == selectedList }
-        
-        // 刪除清單名稱
-        var updatedNames = listNames
-        updatedNames.remove(at: selectedList)
-        self.listNames = updatedNames
-        
-        // 儲存更新後的清單名稱到 UserDefaults
-
-        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
-        UserDefaults.standard.synchronize()
-        
-        for i in 0..<watchlist.count {
-            if watchlist[i].listNames > selectedList {
-                let updatedStock = WatchStock(
-                    id: watchlist[i].id,
-                    symbol: watchlist[i].symbol,
-                    name: watchlist[i].name,
-                    addedDate: watchlist[i].addedDate,
-                    listIndex: watchlist[i].listNames - 1
-                )
-                watchlist[i] = updatedStock
-        
-            }
-        }
-        
-        // 如果刪除的是最後一個清單，選擇前一個清單
-        if selectedList >= listNames.count {
-            selectedList = max(0, listNames.count - 1)
-        }
-    }
-}
-
-struct WatchlistView_Previews: PreviewProvider {
-    static var previews: some View {
-        NavigationStack {
-            WatchlistView(
-                watchlist: .constant([]),
-                isEditing: .constant(false)
-            )
         }
     }
 }

@@ -49,6 +49,7 @@ struct SearchBarView: View {
             
         }
         .padding()
+        .dismissKeyboardOnTap()
         .sheet(isPresented: $showingSearchResult) {
             SearchResultView(
                 stocks: $stocks,

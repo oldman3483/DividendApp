@@ -31,87 +31,93 @@ struct LoginView: View {
                 .blur(radius: 30)
                 .offset(x: 100, y: 150)
             
-            // 主要內容
-            VStack(spacing: 25) {
-                // 標題區域
-                VStack(spacing: 10) {
-                    Text("股息計算器")
-                        .navigationTitleStyle()
-                        .padding(.top, 60)
-                    
-                    Text("追蹤您的投資組合")
-                        .subtextStyle()
-                }
-                .padding(.bottom, 40)
-                
-                // 登入表單
-                VStack(spacing: 20) {
-                    // 電子郵件輸入框
-                    GlassTextField(
-                        icon: "envelope.fill",
-                        placeholder: "電子郵件",
-                        text: $email
-                    )
-                    
-                    // 密碼輸入框
-                    GlassTextField(
-                        icon: "lock.fill",
-                        placeholder: "密碼",
-                        text: $password,
-                        isSecure: true
-                    )
-                }
-                
-                // 登入按鈕
-                Button(action: handleLogin) {
-                    Text("登入")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Color.blue.opacity(0.3))
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(25)
-                }
-                .padding(.top, 20)
-                
-                // 分隔線
-                HStack {
-                    Rectangle()
-                        .fill(.gray.opacity(0.3))
-                        .frame(height: 1)
-                    
-                    Text("或")
-                        .foregroundColor(.gray)
-                        .padding(.horizontal)
-                    
-                    Rectangle()
-                        .fill(.gray.opacity(0.3))
-                        .frame(height: 1)
-                }
-                .padding(.vertical)
-                
-                // 社群登入按鈕
-                HStack(spacing: 20) {
-                    GlassSocialButton(icon: "apple.logo", text: "Apple")
-                    GlassSocialButton(icon: "g.circle.fill", text: "Google")
-                }
-                
-                Spacer()
-                
-                // 註冊提示
-                HStack(spacing: 4) {
-                    Text("新用戶?")
-                        .foregroundColor(.gray)
-                    Button("建立帳號") {
-                        // TODO: 實作註冊功能
+            GeometryReader { geometry in
+                ScrollView {
+                    // 主要內容
+                    VStack(spacing: 25) {
+                        // 標題區域
+                        VStack(spacing: 10) {
+                            Text("股息計算器")
+                                .navigationTitleStyle()
+                                .padding(.top, 60)
+                            
+                            Text("追蹤您的投資組合")
+                                .subtextStyle()
+                        }
+                        .padding(.bottom, 40)
+                        
+                        // 登入表單
+                        VStack(spacing: 20) {
+                            // 電子郵件輸入框
+                            GlassTextField(
+                                icon: "envelope.fill",
+                                placeholder: "電子郵件",
+                                text: $email
+                            )
+                            
+                            // 密碼輸入框
+                            GlassTextField(
+                                icon: "lock.fill",
+                                placeholder: "密碼",
+                                text: $password,
+                                isSecure: true
+                            )
+                        }
+                        
+                        // 登入按鈕
+                        Button(action: handleLogin) {
+                            Text("登入")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color.blue.opacity(0.3))
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(25)
+                        }
+                        .padding(.top, 20)
+                        
+                        // 分隔線
+                        HStack {
+                            Rectangle()
+                                .fill(.gray.opacity(0.3))
+                                .frame(height: 1)
+                            
+                            Text("或")
+                                .foregroundColor(.gray)
+                                .padding(.horizontal)
+                            
+                            Rectangle()
+                                .fill(.gray.opacity(0.3))
+                                .frame(height: 1)
+                        }
+                        .padding(.vertical)
+                        
+                        // 社群登入按鈕
+                        HStack(spacing: 20) {
+                            GlassSocialButton(icon: "apple.logo", text: "Apple")
+                            GlassSocialButton(icon: "g.circle.fill", text: "Google")
+                        }
+                        
+                        Spacer()
+                        
+                        // 註冊提示
+                        HStack(spacing: 4) {
+                            Text("新用戶?")
+                                .foregroundColor(.gray)
+                            Button("建立帳號") {
+                                // TODO: 實作註冊功能
+                            }
+                            .foregroundColor(.white)
+                        }
+                        .padding(.bottom, 30)
                     }
-                    .foregroundColor(.white)
+                    .padding(.horizontal, 30)
+                    .frame(minHeight: geometry.size.height)
                 }
-                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 30)
         }
+        .dismissKeyboardOnTap()
         .alert("登入訊息", isPresented: $isShowingAlert) {
             Button("確定", role: .cancel) { }
         } message: {
@@ -184,6 +190,8 @@ struct GlassSocialButton: View {
         }
     }
 }
+
+
 
 #Preview {
     LoginView()

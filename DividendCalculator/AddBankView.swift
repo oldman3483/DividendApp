@@ -21,21 +21,26 @@ struct AddBankView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("銀行資訊")
-                    .font(.system(size: 14))) { // 調整區段標題字體大小
-                    TextField("銀行名稱", text: $bankName)
-                        .autocorrectionDisabled(true)
-                        .font(.system(size: 18))  // 調整輸入框字體大小
-
-                }
-                
-                if !errorMessage.isEmpty {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                            .font(.system(size: 16))  // 調整錯誤訊息字體大小
+            GeometryReader { geometry in
+                ScrollView {
+                    Form {
+                        Section(header: Text("銀行資訊")
+                            .font(.system(size: 14))) { // 調整區段標題字體大小
+                                TextField("銀行名稱", text: $bankName)
+                                    .autocorrectionDisabled(true)
+                                    .font(.system(size: 18))  // 調整輸入框字體大小
+                                
+                            }
+                        
+                        if !errorMessage.isEmpty {
+                            Section {
+                                Text(errorMessage)
+                                    .foregroundColor(.red)
+                                    .font(.system(size: 16))  // 調整錯誤訊息字體大小
+                            }
+                        }
                     }
+                    .frame(minHeight: geometry.size.height)
                 }
             }
             .navigationTitle("新增銀行")
@@ -54,6 +59,7 @@ struct AddBankView: View {
                 }
             }
         }
+        .dismissKeyboardOnTap()
     }
     
     private func addBank() {
