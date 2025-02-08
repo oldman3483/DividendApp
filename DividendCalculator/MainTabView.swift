@@ -36,14 +36,7 @@ struct MainTabView: View {
             
             // Tab 3: 投資總覽
             NavigationStack {
-                Text("投資總覽")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .principal) {
-                            Text("投資總覽")
-                                .navigationTitleStyle()
-                        }
-                    }
+                InvestmentOverviewView(stocks: $stocks)
             }
             .padding(.top, 65)
             .tabItem {

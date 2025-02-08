@@ -16,6 +16,8 @@ struct AddStockView: View {
     let initialSymbol: String
     let initialName: String
     let bankId: UUID
+    let isFromBankPortfolio: Bool
+
     
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
@@ -32,13 +34,14 @@ struct AddStockView: View {
     private let destinations = ["銀行", "觀察清單"]
     
     init(stocks: Binding<[Stock]>, watchlist: Binding<[WatchStock]>, banks: Binding<[Bank]>,
-         initialSymbol: String = "", initialName: String = "", bankId: UUID) {
+         initialSymbol: String = "", initialName: String = "", bankId: UUID, isFromBankPortfolio: Bool = false) {
         self._stocks = stocks
         self._watchlist = watchlist
         self._banks = banks
         self.initialSymbol = initialSymbol
         self.initialName = initialName
         self.bankId = bankId
+        self.isFromBankPortfolio = isFromBankPortfolio
         
         let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames")?[0] ?? "自選清單1"
         _selectedWatchlist = State(initialValue: defaultWatchlist)
@@ -62,35 +65,39 @@ struct AddStockView: View {
                     }
                 }
                 
-                // 新增：選擇目標區塊
-                Section(header: Text("新增至")) {
-                    Picker("選擇目標", selection: $selectedDestination) {
-                        ForEach(destinations, id: \.self) { destination in
-                            Text(destination)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
+                // 根據來源決定是否顯示選擇目的地區塊
+
+                if !isFromBankPortfolio {
                     
-                    if selectedDestination == "銀行" {
-                        // 銀行列表選擇器
-                        Picker("選擇銀行", selection: $selectedBankId) {
-                            ForEach(banks) { bank in
-                                Text(bank.name).tag(bank.id)
+                    Section(header: Text("新增至")) {
+                        Picker("選擇目標", selection: $selectedDestination) {
+                            ForEach(destinations, id: \.self) { destination in
+                                Text(destination)
                             }
                         }
-                    } else {
-                        // 觀察清單選擇器
-                        let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
-                        Picker("選擇觀察清單", selection: $selectedWatchlist) {
-                            ForEach(watchlistNames, id: \.self) { listName in
-                                Text(listName)
+                        .pickerStyle(SegmentedPickerStyle())
+                        
+                        if selectedDestination == "銀行" {
+                            // 銀行列表選擇器
+                            Picker("選擇銀行", selection: $selectedBankId) {
+                                ForEach(banks) { bank in
+                                    Text(bank.name).tag(bank.id)
+                                }
+                            }
+                        } else {
+                            // 觀察清單選擇器
+                            let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
+                            Picker("選擇觀察清單", selection: $selectedWatchlist) {
+                                ForEach(watchlistNames, id: \.self) { listName in
+                                    Text(listName)
+                                }
                             }
                         }
                     }
                 }
                 
-                // 只在選擇"銀行"時顯示交易和股利資訊
-                if selectedDestination == "銀行" {
+                // 只在選擇"銀行"時或從銀行投資組合進入時顯示交易和股利資訊
+                if selectedDestination == "銀行" || isFromBankPortfolio {
                     // 交易信息區塊
                     Section(header: Text("交易資訊")) {
                         TextField("持股數量", text: $shares)
@@ -144,14 +151,17 @@ struct AddStockView: View {
                     Button("取消") { dismiss() }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("新增") { addStock() }
-                        .disabled(selectedDestination == "銀行" ? shares.isEmpty : false)
+                    Button("新增") {
+                        addStock()
+                    }
+                    .disabled(isFromBankPortfolio || selectedDestination == "銀行" ? shares.isEmpty : false)
                 }
             }
         }
         .task {
             await loadStockData()
         }
+//        .dismissKeyboardOnTap()
     }
     
     private func getFrequencyText(_ frequency: Int) -> String {
