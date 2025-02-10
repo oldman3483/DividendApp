@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+import Charts
 
 struct InvestmentOverviewView: View {
     @Binding var stocks: [Stock]
@@ -15,6 +16,14 @@ struct InvestmentOverviewView: View {
     
     private let timeRanges = ["1Y", "3Y", "5Y"]
     private let analysisTypes = ["amount", "yield"]
+    
+    // MARK: - 股利趨勢資料結構
+    struct DividendTrend: Identifiable {
+        let id = UUID()
+        let date: Date
+        let annualDividend: Double
+        let yield: Double
+    }
     
     // 計算總投資金額
     private var totalInvestment: Double {
@@ -65,7 +74,6 @@ struct InvestmentOverviewView: View {
     }
     
     // MARK: - 子視圖
-    
     private var timeRangeSelector: some View {
         HStack(spacing: 15) {
             ForEach(timeRanges, id: \.self) { range in
@@ -85,12 +93,10 @@ struct InvestmentOverviewView: View {
     
     private var investmentSummaryCards: some View {
         VStack(spacing: 15) {
-            // 卡片標題
             Text("投資概覽")
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            // 卡片網格
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
@@ -112,14 +118,42 @@ struct InvestmentOverviewView: View {
                 .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            // 這裡可以加入圖表視圖
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.gray.opacity(0.2))
-                .frame(height: 200)
-                .overlay(
-                    Text("股利趨勢圖")
-                        .foregroundColor(.gray)
+            Chart(calculateTrendData()) { trend in
+                LineMark(
+                    x: .value("日期", trend.date),
+                    y: .value("年化股利", trend.annualDividend)
                 )
+                .foregroundStyle(.blue)
+                .interpolationMethod(.monotone)
+                
+                LineMark(
+                    x: .value("日期", trend.date),
+                    y: .value("殖利率", trend.yield)
+                )
+                .foregroundStyle(.green)
+                .interpolationMethod(.monotone)
+            }
+            .chartXAxis {
+                AxisMarks(position: .bottom) { value in
+                    if let date = value.as(Date.self) {
+                        AxisValueLabel {
+                            Text(date.formatted(.dateTime.month().year()))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisValueLabel {
+                        if let number = value.as(Double.self) {
+                            Text("$\(Int(number))")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            }
+            .frame(height: 200)
         }
         .padding()
         .background(Color.gray.opacity(0.1))
@@ -192,6 +226,55 @@ struct InvestmentOverviewView: View {
         .background(Color.gray.opacity(0.2))
         .cornerRadius(10)
     }
+    
+    // MARK: - 輔助方法
+    private func calculateTrendData() -> [DividendTrend] {
+        let calendar = Calendar.current
+        var trendData: [DividendTrend] = []
+        
+        // 根據選擇的時間範圍決定起始日期
+        let now = Date()
+        let yearsToShow: Int = {
+            switch selectedTimeRange {
+            case "1Y": return 1
+            case "3Y": return 3
+            case "5Y": return 5
+            default: return 1
+            }
+        }()
+        
+        guard let startDate = calendar.date(byAdding: .year, value: -yearsToShow, to: now) else { return [] }
+        var currentDate = startDate
+        
+        while currentDate <= now {
+            // 篩選在該日期之前購買的股票
+            let relevantStocks = stocks.filter { $0.purchaseDate <= currentDate }
+            
+            // 計算總年化股利
+            let totalAnnualDividend = relevantStocks.reduce(0) { $0 + $1.calculateAnnualDividend() }
+            
+            // 計算總投資金額
+            let totalInvestment = relevantStocks.reduce(0) { $0 + (Double($1.shares) * ($1.purchasePrice ?? 0)) }
+            
+            // 計算殖利率
+            let yield = totalInvestment > 0 ? (totalAnnualDividend / totalInvestment) * 100 : 0
+            
+            trendData.append(DividendTrend(
+                date: currentDate,
+                annualDividend: totalAnnualDividend,
+                yield: yield
+            ))
+            
+            // 移到下一個月
+            if let nextMonth = calendar.date(byAdding: .month, value: 1, to: currentDate) {
+                currentDate = nextMonth
+            } else {
+                break
+            }
+        }
+        
+        return trendData
+    }
 }
 
 // MARK: - 擴展
@@ -200,11 +283,5 @@ extension Int {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter.string(from: NSNumber(value: self)) ?? String(self)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        InvestmentOverviewView(stocks: .constant([]))
     }
 }

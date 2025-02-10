@@ -42,13 +42,33 @@ struct Stock: Identifiable, Codable, Equatable {
         return Double(shares) * dividendPerShare * Double(frequency)
     }
     
-    // 計算持股總市值
-    func calculateTotalValue() -> Double? {
+    // 計算購買時的總價值
+    func calculateTotalCost() -> Double? {
         if let price = purchasePrice {
             return Double(shares) * price
         }
         return nil
     }
+    // 計算損益
+    func calculateProfitLoss(currentPrice: Double?) -> Double {
+        guard let currentPrice = currentPrice,
+              let purchasePrice = self.purchasePrice else { return 0 }
+        return Double(shares) * (currentPrice - purchasePrice)
+    }
+        
+    // 計算報酬率
+    func calculateROI(currentPrice: Double?) -> Double {
+        guard let currentPrice = currentPrice,
+              let purchasePrice = self.purchasePrice,
+              purchasePrice > 0 else { return 0 }
+        return ((currentPrice - purchasePrice) / purchasePrice) * 100
+    }
+    // 計算當前總市值
+    func calculateCurrentValue(currentPrice: Double?) -> Double {
+        return Double(shares) * (currentPrice ?? 0)
+    }
+
+
     
     // 解碼初始化器
     init(from decoder: Decoder) throws {
@@ -183,3 +203,4 @@ extension Array where Element == Stock {
         }.sorted { $0.symbol < $1.symbol }
     }
 }
+
