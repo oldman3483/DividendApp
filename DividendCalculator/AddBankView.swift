@@ -1,11 +1,4 @@
 //
-//  BankListView.swift
-//  DividendCalculator
-//
-//  Created by Heidie Lee on 2025/1/31.
-//
-
-//
 //  AddBankView.swift
 //  DividendCalculator
 //
@@ -13,36 +6,79 @@
 import SwiftUI
 
 struct AddBankView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
     @Binding var banks: [Bank]
     
-    @State private var bankName: String = ""
-    @State private var errorMessage: String = ""
+    @State var bankName: String = ""
+    @State var errorMessage: String = ""
+    
+    var filteredSuggestions: [String] {
+        if bankName.isEmpty {
+            return TaiwanBanks.suggestions
+        }
+        return TaiwanBanks.suggestions.filter {
+            $0.lowercased().contains(bankName.lowercased())
+        }
+    }
     
     var body: some View {
         NavigationStack {
-            GeometryReader { geometry in
-                ScrollView {
-                    Form {
-                        Section(header: Text("銀行資訊")
-                            .font(.system(size: 14))) { // 調整區段標題字體大小
-                                TextField("銀行名稱", text: $bankName)
-                                    .autocorrectionDisabled(true)
-                                    .font(.system(size: 18))  // 調整輸入框字體大小
-                                
-                            }
+            ScrollView {
+                VStack(spacing: 20) {
+                    // 銀行名稱輸入區
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("銀行名稱")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
                         
-                        if !errorMessage.isEmpty {
-                            Section {
-                                Text(errorMessage)
-                                    .foregroundColor(.red)
-                                    .font(.system(size: 16))  // 調整錯誤訊息字體大小
+                        TextField("輸入銀行名稱或從下方選擇", text: $bankName)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocorrectionDisabled(true)
+                    }
+                    .padding(.horizontal)
+                    
+                    if !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.system(size: 16))
+                            .padding(.horizontal)
+                    }
+                    
+                    // 建議銀行列表
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("建議銀行")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ],
+                            spacing: 12
+                        ) {
+                            ForEach(filteredSuggestions, id: \.self) { suggestion in
+                                Button(action: {
+                                    bankName = suggestion
+                                }) {
+                                    Text(suggestion)
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.white)
+                                        .padding(.vertical, 12)
+                                        .frame(maxWidth: .infinity)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(bankName == suggestion ? Color.blue.opacity(0.3) : Color.gray.opacity(0.2))
+                                        )
+                                }
                             }
                         }
                     }
-                    .frame(minHeight: geometry.size.height)
+                    .padding(.horizontal)
                 }
+                .padding(.vertical)
             }
+            .background(Color.black)
             .navigationTitle("新增銀行")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -62,7 +98,7 @@ struct AddBankView: View {
         .dismissKeyboardOnTap()
     }
     
-    private func addBank() {
+    func addBank() {
         let trimmedName = bankName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             errorMessage = "請輸入銀行名稱"

@@ -252,18 +252,27 @@ struct BankListView: View {
             }
         }
         
-        // 計算總市值和其他指標
         for stock in bankStocks {
             if let currentPrice = await stockService.getStockPrice(symbol: stock.symbol, date: Date()) {
                 let stockValue = Double(stock.shares) * currentPrice
                 metrics.totalValue += stockValue
                 
-                // 計算損益
-                metrics.totalProfitLoss += stock.calculateProfitLoss(currentPrice: currentPrice)
-                metrics.dailyChange += stock.calculateProfitLoss(currentPrice: currentPrice)
+                // 計算總損益
+                let profitLoss = stock.calculateProfitLoss(currentPrice: currentPrice)
+                metrics.totalProfitLoss += profitLoss
+                
+                // 獲取昨日價格來計算當日損益
+                if let yesterdayPrice = await stockService.getStockPrice(
+                    symbol: stock.symbol,
+                    date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+                ) {
+                    // 計算當日損益
+                    let dailyPriceChange = currentPrice - yesterdayPrice
+                    metrics.dailyChange += Double(stock.shares) * dailyPriceChange
+                }
                 
                 // 計算報酬率
-                metrics.totalROI += stock.calculateROI(currentPrice: currentPrice)
+                metrics.totalROI = (metrics.totalProfitLoss / metrics.totalValue) * 100
             }
             
             // 計算年化股利
@@ -326,46 +335,6 @@ struct BankListView: View {
         newBankName = ""
         showingRenameAlert = false
     }
-    
-//    private func summaryCard(
-//        title: String,
-//        value: String,
-//        change: String? = nil,
-//        subValue: String? = nil,
-//        isPositive: Bool = true,
-//        showChange: Bool = true
-//    ) -> some View {
-//        VStack(alignment: .leading, spacing: 8) {
-//            Text(title)
-//                .font(.system(size: 14))
-//                .foregroundColor(.gray)
-//            
-//            Text(value)
-//                .font(.system(size: 18, weight: .bold))
-//                .foregroundColor(.white)
-//            
-//            if showChange, let change = change {
-//                HStack(spacing: 4) {
-//                    Image(systemName: isPositive ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-//                        .font(.system(size: 10))
-//                    Text(change)
-//                        .font(.system(size: 12))
-//                }
-//                .foregroundColor(isPositive ? .green : .red)
-//            }
-//            
-//            if let subValue = subValue {
-//                Text(subValue)
-//                    .font(.system(size: 12))
-//                    .foregroundColor(.gray)
-//            }
-//        }
-//        .frame(maxWidth: .infinity, alignment: .leading)
-//        .padding()
-//        .background(Color.gray.opacity(0.2))
-//        .cornerRadius(10)
-//        .flashAnimation(isPositive: isPositive)
-//    }
 }
 
 #Preview {
