@@ -193,33 +193,38 @@ struct WatchlistView: View {
         // 刪除該清單中的所有股票
         watchlist.removeAll { $0.listNames == selectedList }
         
+        // 建立暫存陣列來保存更新後的股票
+        var updatedWatchlist: [WatchStock] = []
+        
+        // 更新其他股票的清單索引
+        for stock in watchlist {
+            if stock.listNames < selectedList {
+                // 保持原索引不變
+                updatedWatchlist.append(stock)
+            } else if stock.listNames > selectedList {
+                // 更新索引減1
+                let updatedStock = WatchStock(
+                    id: stock.id,
+                    symbol: stock.symbol,
+                    name: stock.name,
+                    addedDate: stock.addedDate,
+                    listIndex: stock.listNames - 1
+                )
+                updatedWatchlist.append(updatedStock)
+            }
+        }
+        
         // 更新清單名稱
         var names = listNames
         names.remove(at: selectedList)
         listNames = names
         UserDefaults.standard.set(names, forKey: "watchlistNames")
         
-        // 更新其他股票的清單索引
-        for i in 0..<watchlist.count {
-            if watchlist[i].listNames > selectedList {
-                let updatedStock = WatchStock(
-                    id: watchlist[i].id,
-                    symbol: watchlist[i].symbol,
-                    name: watchlist[i].name,
-                    addedDate: watchlist[i].addedDate,
-                    listIndex: watchlist[i].listNames - 1
-                )
-                watchlist[i] = updatedStock
-            }
-        }
-        
+        // 更新 watchlist 為新的陣列
+        watchlist = updatedWatchlist
+                
         // 更新選中的清單
-        selectedList = max(0, names.count - 1)
+        selectedList = max(0, selectedList - 1)
     }
 }
 
-#Preview {
-    NavigationStack {
-        WatchlistView(watchlist: .constant([]))
-    }
-}
