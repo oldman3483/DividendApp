@@ -238,7 +238,7 @@ struct AddStockView: View {
         let selectedIndex = watchlistNames.firstIndex(of: selectedWatchlist) ?? 0
         
         // 检查是否已存在
-        let exists = watchlist.contains { $0.symbol == initialSymbol && $0.listNames == selectedIndex }
+        let exists = watchlist.contains { $0.symbol == initialSymbol && $0.listName == selectedWatchlist }
         
         if exists {
             errorMessage = "此股票已在觀察清單中"
@@ -248,7 +248,7 @@ struct AddStockView: View {
         let newWatchStock = WatchStock(
             symbol: initialSymbol,
             name: initialName,
-            listIndex: selectedIndex
+            listName: selectedWatchlist
         )
         
         watchlist.append(newWatchStock)

@@ -134,12 +134,3 @@ struct WatchStockCard: View {
     }
 }
 
-#Preview {
-    WatchStockCard(stock: WatchStock(
-        symbol: "2330",
-        name: "台積電",
-        listIndex: 0
-    ))
-    .padding()
-    .background(Color.black)
-}
