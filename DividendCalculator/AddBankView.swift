@@ -46,7 +46,7 @@ struct AddBankView: View {
                     
                     // 建議銀行列表
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("建議銀行")
+                        Text("銀行清單")
                             .font(.system(size: 14))
                             .foregroundColor(.gray)
                         
