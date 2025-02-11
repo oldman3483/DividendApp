@@ -7,65 +7,199 @@
 import SwiftUI
 
 struct WatchlistView: View {
+    // MARK: - Properties
     @State private var selectedList: Int = 0
     @Binding var watchlist: [WatchStock]
-    @Binding var isEditing: Bool
+    @State private var isEditing = false
     @State private var showingAddList = false
     @State private var newListName = ""
     @State private var showingEditList = false
     @State private var showingDeleteAlert = false
     @State private var listNames: [String] = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
     
-    // MARK: - 私有方法
+    // MARK: - Computed Properties
+    private var currentListStocks: [WatchStock] {
+        watchlist.filter { $0.listNames == selectedList }
+    }
     
-    // 從觀察清單中移除股票
-    private func removeFromWatchlist(at offsets: IndexSet) {
-        let currentListStocks = watchlist.filter { $0.listNames == selectedList }
-        let toRemove = offsets.map { currentListStocks[$0] }
-        watchlist.removeAll { stock in
-            toRemove.contains { $0.id == stock.id }
+    // MARK: - Body
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                
+                VStack(spacing: 0) {
+                    // 清單選擇器
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 15) {
+                            ForEach(Array(listNames.enumerated()), id: \.element) { index, name in
+                                Button(action: {
+                                    selectedList = index
+                                }) {
+                                    Text(name)
+                                        .padding(.horizontal, 15)
+                                        .padding(.vertical, 8)
+                                        .background(selectedList == index ? Color.blue : Color.gray.opacity(0.2))
+                                        .foregroundColor(.white)
+                                        .cornerRadius(20)
+                                }
+                            }
+                            
+                            Button(action: {
+                                showingAddList = true
+                            }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.title2)
+                            }
+                        }
+                        .padding()
+                    }
+                    
+                    // 股票列表
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            if currentListStocks.isEmpty {
+                                VStack {
+                                    Spacer()
+                                    Text("尚無觀察股票")
+                                        .foregroundColor(.gray)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 200)
+                                    Spacer()
+                                }
+                            } else {
+                                ForEach(currentListStocks) { stock in
+                                    WatchStockCard(stock: stock)
+                                        .padding(.horizontal)
+                                        .contextMenu {
+                                            Button(role: .destructive) {
+                                                deleteStock(stock)
+                                            } label: {
+                                                Label("刪除", systemImage: "trash")
+                                            }
+                                        }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 12)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("觀察清單")
+                        .navigationTitleStyle()
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack {
+                        // 清單管理選單
+                        Menu {
+                            Button("重新命名清單") {
+                                newListName = listNames[selectedList]
+                                showingEditList = true
+                            }
+                            
+                            if listNames.count > 1 {
+                                Button("刪除清單", role: .destructive) {
+                                    showingDeleteAlert = true
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddList) {
+                NavigationStack {
+                    Form {
+                        Section {
+                            TextField("清單名稱", text: $newListName)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                        }
+                    }
+                    .scrollContentBackground(.hidden)
+                    .navigationTitle("新增觀察清單")
+                    .navigationBarItems(
+                        leading: Button("取消") {
+                            showingAddList = false
+                            newListName = ""
+                        },
+                        trailing: Button("新增") {
+                            addNewList()
+                        }
+                        .disabled(newListName.isEmpty)
+                    )
+                }
+            }
+            .alert("重新命名清單", isPresented: $showingEditList) {
+                TextField("新名稱", text: $newListName)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                Button("取消", role: .cancel) {
+                    newListName = ""
+                }
+                Button("確定") {
+                    renameCurrentList()
+                }
+            }
+            .alert("刪除清單", isPresented: $showingDeleteAlert) {
+                Button("取消", role: .cancel) { }
+                Button("刪除", role: .destructive) {
+                    deleteCurrentList()
+                }
+            } message: {
+                Text("確定要刪除「\(listNames[selectedList])」嗎？此操作無法復原。")
+            }
         }
     }
     
-    // 新增觀察清單
+    // MARK: - Methods
+    private func deleteStock(_ stock: WatchStock) {
+        watchlist.removeAll { $0.id == stock.id }
+    }
+    
     private func addNewList() {
+        guard !newListName.isEmpty else { return }
+        
         var names = listNames
         names.append(newListName)
-        self.listNames = names
-        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
+        listNames = names
+        UserDefaults.standard.set(names, forKey: "watchlistNames")
+        
         selectedList = names.count - 1
         showingAddList = false
         newListName = ""
     }
     
-    // 重新命名當前清單
     private func renameCurrentList() {
-        if !newListName.isEmpty {
-            var names = listNames
-            names[selectedList] = newListName
-            self.listNames = names
-            UserDefaults.standard.set(listNames, forKey: "watchlistNames")
-            newListName = ""
-        }
+        guard !newListName.isEmpty else { return }
+        
+        var names = listNames
+        names[selectedList] = newListName
+        listNames = names
+        UserDefaults.standard.set(names, forKey: "watchlistNames")
+        newListName = ""
     }
     
-    // 刪除當前清單
     private func deleteCurrentList() {
         guard listNames.count > 1 else { return }
         
         // 刪除該清單中的所有股票
         watchlist.removeAll { $0.listNames == selectedList }
         
-        // 刪除清單名稱
-        var updatedNames = listNames
-        updatedNames.remove(at: selectedList)
-        self.listNames = updatedNames
+        // 更新清單名稱
+        var names = listNames
+        names.remove(at: selectedList)
+        listNames = names
+        UserDefaults.standard.set(names, forKey: "watchlistNames")
         
-        // 儲存更新後的清單名稱到 UserDefaults
-        UserDefaults.standard.set(listNames, forKey: "watchlistNames")
-        UserDefaults.standard.synchronize()
-        
-        // 更新剩餘股票的清單索引
+        // 更新其他股票的清單索引
         for i in 0..<watchlist.count {
             if watchlist[i].listNames > selectedList {
                 let updatedStock = WatchStock(
@@ -79,159 +213,13 @@ struct WatchlistView: View {
             }
         }
         
-        // 如果刪除的是最後一個清單，選擇前一個清單
-        if selectedList >= listNames.count {
-            selectedList = max(0, listNames.count - 1)
-        }
+        // 更新選中的清單
+        selectedList = max(0, names.count - 1)
     }
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // 自選清單切換按鈕
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 15) {
-                    ForEach(Array(listNames.enumerated()), id: \.element) { index, name in
-                        Button(action: {
-                            selectedList = index
-                        }) {
-                            Text(name)
-                                .padding(.horizontal, 15)
-                                .padding(.vertical, 8)
-                                .background(selectedList == index ? Color.blue : Color.gray.opacity(0.2))
-                                .foregroundColor(selectedList == index ? .white : .white)
-                                .cornerRadius(20)
-                        }
-                    }
-                    
-                    // 新增清單按鈕
-                    Button(action: {
-                        showingAddList = true
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.blue)
-                            .font(.title2)
-                    }
-                }
-                .padding()
-            }
-            .background(Color.clear)
-            
-            // 股票列表
-            List {
-                if watchlist.filter({ $0.listNames == selectedList }).isEmpty {
-                    Text("尚無觀察股票")
-                        .foregroundColor(.gray)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .listRowBackground(Color.black)
-                } else {
-                    ForEach(watchlist.filter { $0.listNames == selectedList }) { stock in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                HStack {
-                                    Text(stock.symbol)
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                    Text(stock.name)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                        .listRowSeparator(.hidden)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 18)
-                        .background(Color.black.opacity(0.3))
-                        .cornerRadius(5)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 5)
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                        .shadow(
-                            color: Color.white.opacity(0.1),
-                            radius: 3,
-                            x: 0,
-                            y: 2
-                        )
-                        .listRowBackground(Color.black)
-                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                    }
-                    .onDelete(perform: removeFromWatchlist)
-                }
-            }
-            .listStyle(PlainListStyle())
-            .background(Color.black)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("觀察清單")
-                    .navigationTitleStyle()
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button("重新命名", action: {
-                        newListName = listNames[selectedList]
-                        showingEditList = true
-                    })
-                    Button("刪除清單", role: .destructive, action: {
-                        showingDeleteAlert = true
-                    })
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundColor(.white)
-                }
-                .disabled(listNames.count <= 1)
-            }
-        }
-        .sheet(isPresented: $showingAddList) {
-            NavigationStack {
-                GeometryReader { geometry in
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            Form {
-                                Section {
-                                    TextField("清單名稱", text: $newListName)
-                                        .textInputAutocapitalization(.never)
-                                        .autocorrectionDisabled(true)
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .scrollContentBackground(.hidden)
-                        }
-                        .frame(minHeight: geometry.size.height)
-                    }
-                }
-                .navigationTitle("新增觀察清單")
-                .navigationBarItems(
-                    leading: Button("取消") {
-                        showingAddList = false
-                        newListName = ""
-                    },
-                    trailing: Button("新增") {
-                        addNewList()
-                    }
-                    .disabled(newListName.isEmpty)
-                )
-            }
-            .dismissKeyboardOnTap()
-        }
-        .alert("重新命名清單", isPresented: $showingEditList) {
-            TextField("新名稱", text: $newListName)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled(true)
-            Button("取消", role: .cancel) {
-                newListName = ""
-            }
-            Button("確定") {
-                renameCurrentList()
-            }
-        }
-        .alert("刪除清單", isPresented: $showingDeleteAlert) {
-            Button("取消", role: .cancel) { }
-            Button("刪除", role: .destructive) {
-                deleteCurrentList()
-            }
-        } message: {
-            Text("確定要刪除「\(listNames[selectedList])」嗎？此操作無法復原。")
-        }
+}
+
+#Preview {
+    NavigationStack {
+        WatchlistView(watchlist: .constant([]))
     }
 }

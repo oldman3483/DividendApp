@@ -43,7 +43,6 @@ struct ContentView: View {
             stocks: $stocks,
             watchlist: $watchlist,
             banks: $banks,
-            isEditing: $isEditing,
             selectedBankId: $selectedBankId
         )
         

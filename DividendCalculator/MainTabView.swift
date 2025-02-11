@@ -11,7 +11,6 @@ struct MainTabView: View {
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
     @Binding var banks: [Bank]
-    @Binding var isEditing: Bool
     @Binding var selectedBankId: UUID
     
     var body: some View {
@@ -27,7 +26,7 @@ struct MainTabView: View {
             
             // Tab 2: 觀察清單
             NavigationStack {
-                WatchlistView(watchlist: $watchlist, isEditing: $isEditing)
+                WatchlistView(watchlist: $watchlist)
             }
             .padding(.top, 65)
             .tabItem {
