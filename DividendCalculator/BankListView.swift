@@ -61,7 +61,8 @@ struct BankListView: View {
                     title: "總投資報酬",
                     value: "$\(Int(portfolioMetrics.totalProfitLoss).formattedWithComma)",
                     change: String(format: "%.1f%%", abs(portfolioMetrics.totalROI)),
-                    isPositive: portfolioMetrics.totalProfitLoss >= 0
+                    isPositive: portfolioMetrics.totalProfitLoss >= 0,
+                    valueColor: portfolioMetrics.totalProfitLoss >= 0 ? Color.green : Color.red
                 )
                 
                 // 當日損益
@@ -69,7 +70,8 @@ struct BankListView: View {
                     title: "當日損益",
                     value: "$\(Int(abs(portfolioMetrics.dailyChange)).formattedWithComma)",
                     change: String(format: "%.2f%%", abs(portfolioMetrics.dailyChangePercentage)),
-                    isPositive: portfolioMetrics.dailyChange >= 0
+                    isPositive: portfolioMetrics.dailyChange >= 0,
+                    valueColor: portfolioMetrics.dailyChange >= 0 ? Color.green : Color.red
                 )
                 
                 // 年化股利收益率
@@ -94,7 +96,8 @@ struct BankListView: View {
         change: String? = nil,
         subValue: String? = nil,
         isPositive: Bool = true,
-        showChange: Bool = true
+        showChange: Bool = true,
+        valueColor: Color = Color.white
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
@@ -103,7 +106,7 @@ struct BankListView: View {
             
             Text(value)
                 .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(valueColor)
             
             if showChange, let change = change {
                 HStack(spacing: 4) {

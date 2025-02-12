@@ -33,78 +33,83 @@ struct WatchStockCard: View {
     var body: some View {
         HStack(spacing: 16) {
             if isEditing {
-                // 編輯模式時的左側空間
                 Color.clear
                     .frame(width: 8)
             }
             
-            // 主要內容
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 16) {
-                    // 左側：股票信息
-                    VStack(alignment: .leading, spacing: 8) {
-                        // 股票代號和名稱
-                        HStack(spacing: 6) {
-                            Text(stock.symbol)
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            Text(stock.name)
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        // 價格和變動
-                        if !isLoading {
-                            HStack(spacing: 4) {
-                                Text("$\(String(format: "%.2f", stockPrice))")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .frame(minWidth: 65, alignment: .leading)
-                                
-                                HStack(spacing: 2) {
-                                    Image(systemName: priceChange >= 0 ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
-                                        .font(.system(size: 10))
-                                    Text("\(String(format: "%.2f", abs(priceChange)))")
-                                    Text("(\(String(format: "%.1f", abs(changePercentage)))%)")
-                                }
-                                .font(.system(size: 14))
-                                .foregroundColor(priceChange >= 0 ? .green : .red)
-                            }
-                        } else {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        }
-                    }
-                    .layoutPriority(1)
-                    
-                    Spacer()
-                    
-                    // 右側：走勢圖
-                    if !isLoading && !isEditing {
-                        Chart {
-                            ForEach(priceHistory, id: \.0) { item in
-                                LineMark(
-                                    x: .value("Time", item.0),
-                                    y: .value("Price", item.1)
-                                )
-                                .foregroundStyle(priceChange >= 0 ? Color.green : Color.red)
-                            }
-                        }
-                        .frame(width: 100, height: 40)
-                        .chartXAxis(.hidden)
-                        .chartYAxis(.hidden)
+            // 左側：股票名稱和代號
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stock.name)
+                    .font(.system(size: 17, weight: .regular))
+                    .foregroundColor(.white)
+                
+                Text(stock.symbol)
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+            }
+            .frame(width: 75, alignment: .leading)
+            
+            if !isLoading && !isEditing {
+                // 中間：走勢圖
+                Chart {
+                    ForEach(priceHistory, id: \.0) { item in
+                        LineMark(
+                            x: .value("Time", item.0),
+                            y: .value("Price", item.1)
+                        )
+                        .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
                     }
                 }
+                .frame(width: 80, height: 25)
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
             }
-            .padding(.horizontal, isEditing ? 8 : 16)
-            .padding(.vertical, 12)
-            .background(Color.black.opacity(0.3))
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-            )
+            
+            Spacer()
+            
+            // 右側：價格區域
+            if !isLoading {
+                HStack(alignment: .center, spacing: 8) {
+                    
+                    Text(String(format: "%.2f", stockPrice))
+                        .heading3Style()
+                        .frame(width: 70, alignment: .trailing)
+                        .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
+
+                    
+                    VStack(alignment: .center, spacing: 2) {
+                        
+                        Text(String(format: "%+.2f", priceChange))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(priceChange >= 0 ? Color.red : Color.green)
+                            )
+                            .frame(minWidth: 70)
+                        
+                        Text(String(format: "%+.2f%%", changePercentage))
+                            .font(.system(size: 12))
+                            .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
+
+                    }
+                }
+            } else {
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
         }
+        .frame(height: 40)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .background(Color.black.opacity(0.3))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
         .task {
             await loadStockData()
         }
