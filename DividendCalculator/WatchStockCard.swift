@@ -31,6 +31,18 @@ struct WatchStockCard: View {
     }
     
     var body: some View {
+        NavigationLink {
+            StockDetailPage(symbol: stock.symbol, name: stock.name)
+        } label: {
+            contentView
+        }
+        .disabled(isEditing)
+        .task {
+            await loadStockData()
+        }
+    }
+    
+    private var contentView: some View {
         HStack(spacing: 16) {
             if isEditing {
                 Color.clear
@@ -70,15 +82,12 @@ struct WatchStockCard: View {
             // 右側：價格區域
             if !isLoading {
                 HStack(alignment: .center, spacing: 8) {
-                    
                     Text(String(format: "%.2f", stockPrice))
                         .heading3Style()
                         .frame(width: 70, alignment: .trailing)
                         .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
-
                     
                     VStack(alignment: .center, spacing: 2) {
-                        
                         Text(String(format: "%+.2f", priceChange))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
@@ -93,7 +102,7 @@ struct WatchStockCard: View {
                         Text(String(format: "%+.2f%%", changePercentage))
                             .font(.system(size: 12))
                             .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
-
+                        
                     }
                 }
             } else {
@@ -110,9 +119,6 @@ struct WatchStockCard: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.gray.opacity(0.3), lineWidth: 1)
         )
-        .task {
-            await loadStockData()
-        }
     }
     
     private func loadStockData() async {

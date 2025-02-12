@@ -25,10 +25,10 @@ struct BankCardView: View {
                         .foregroundColor(.blue)
                 }
                 .padding(.trailing, 7)
-            } else {
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
-                    .font(.system(size: 14, weight: .semibold))
+//            } else {
+//                Image(systemName: "chevron.right")
+//                    .foregroundColor(.gray)
+//                    .font(.system(size: 14, weight: .semibold))
             }
         }
         .padding(.vertical, 12)

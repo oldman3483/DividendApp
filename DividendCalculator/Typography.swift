@@ -11,7 +11,7 @@ import SwiftUI
 // MARK: - 字型大小定義
 struct FontSize {
     // 標題
-    static let navigationTitle: CGFloat = 35
+    static let navigationTitle: CGFloat = 28
     
     // 主要內容
     static let heading1: CGFloat = 24
