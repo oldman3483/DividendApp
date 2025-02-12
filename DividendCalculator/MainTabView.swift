@@ -19,7 +19,7 @@ struct MainTabView: View {
             NavigationStack {
                 BankListView(banks: $banks, stocks: $stocks)
             }
-            .padding(.top, 65)
+            .padding(.top, 40)
             .tabItem {
                 Label("我的庫存", systemImage: "chart.pie.fill")
             }
@@ -28,7 +28,7 @@ struct MainTabView: View {
             NavigationStack {
                 WatchlistView(watchlist: $watchlist)
             }
-            .padding(.top, 65)
+            .padding(.top, 40)
             .tabItem {
                 Label("觀察清單", systemImage: "star.fill")
             }
@@ -37,7 +37,7 @@ struct MainTabView: View {
             NavigationStack {
                 InvestmentOverviewView(stocks: $stocks)
             }
-            .padding(.top, 65)
+            .padding(.top, 40)
             .tabItem {
                 Label("投資總覽", systemImage: "chart.bar.fill")
             }
@@ -45,7 +45,7 @@ struct MainTabView: View {
             NavigationStack {
                 NewsView()
             }
-            .padding(.top, 65)
+            .padding(.top, 40)
             .tabItem {
                 Label("最新資訊", systemImage: "newspaper.fill")
             }
@@ -53,7 +53,7 @@ struct MainTabView: View {
             NavigationStack {
                 SettingsView()
             }
-            .padding(.top, 65)
+            .padding(.top, 40)
             .tabItem {
                 Label("更多設定", systemImage: "gearshape.fill")
             }

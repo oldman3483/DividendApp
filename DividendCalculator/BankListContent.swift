@@ -45,5 +45,6 @@ struct BankListContent: View {
         }
         .listStyle(PlainListStyle())
         .listRowSpacing(10)
+        
     }
 }

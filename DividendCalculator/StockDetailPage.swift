@@ -5,42 +5,76 @@
 //  Created by Heidie Lee on 2025/2/12.
 //
 
+//  StockDetailPage.swift
+//  DividendCalculator
+
 import SwiftUI
 import Charts
 
 struct StockDetailPage: View {
     let symbol: String
     let name: String
-    @State private var selectedTab = "行情"
-    @State private var selectedTimeRange = "當日"
+    @State private var selectedTab: StockDetailTab = .market
+    @State private var selectedTimeRange: String = "當日"
     @State private var stockPrice: Double = 0.0
     @State private var priceChange: Double = 0.0
     @State private var percentageChange: Double = 0.0
+    @State private var previousPrice: Double = 0.0
     @State private var volume: Int = 0
     @State private var isLoading = true
+    @State private var priceHistory: [(Date, Double)] = []
+    @State private var klineData: [KLineData] = []
     
-    private let tabs = ["行情", "K線", "評析", "新聞", "籌碼", "基本", "財務"]
-    private let timeRanges = ["當日", "五日", "近月", "三月", "六月", "一年", "五年"]
     private let stockService = LocalStockService()
     
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(spacing: 0) {
+                VStack(spacing: 12) {
                     // 標題區域
                     headerSection
                     
-                    // 價格資訊區域
-                    priceSection
+                    // 市場資訊卡片
+                    MarketInfoCard(
+                        price: stockPrice,
+                        change: priceChange,
+                        changePercentage: percentageChange,
+                        high: previousPrice * 1.1,
+                        low: previousPrice * 0.9,
+                        volume: volume
+                    )
+                    .padding(.horizontal)
+                
                     
-                    // 分頁選擇器
-                    tabSection
+                    // 標籤列
+                    StockTabBar(selectedTab: $selectedTab)
                     
-                    // 時間區間選擇器
-                    timeRangeSection
+                    // 時間範圍選擇器
+                    TimeRangeSelector(
+                        timeRanges: selectedTab.timeRanges,
+                        selectedRange: $selectedTimeRange
+                    )
                     
-                    // K線圖
-                    chartSection
+                    // 內容區域
+                    Group {
+                        switch selectedTab {
+                        case .market:
+                            marketContent
+                        case .kline:
+                            klineContent
+                        case .analysis:
+                            analysisContent
+                        case .news:
+                            newsContent
+                        case .chip:
+                            chipContent
+                        case .basic:
+                            basicContent
+                        case .financial:
+                            financialContent
+                        }
+                    }
+                    .padding(.horizontal)
                 }
             }
         }
@@ -57,156 +91,167 @@ struct StockDetailPage: View {
         .task {
             await loadStockData()
         }
+        .onChange(of: selectedTab) { oldTab,newTab in
+            selectedTimeRange = newTab.timeRanges[0]
+        }
     }
     
-    // MARK: - UI Components
+    // MARK: - View Components
+    
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(symbol)
-                    .font(.title)
-                    .bold()
+                    .font(.system(size: 24, weight: .bold))
                 Text(name)
-                    .font(.title2)
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundColor(.gray)
                 Spacer()
             }
-            
-//            HStack {
-//                Text("加權指數")
-//                    .foregroundColor(.gray)
-//                Text("23297.52")
-//                    .foregroundColor(.red)
-//                Text("▼")
-//                    .foregroundColor(.red)
-//                Text("-86.53")
-//                    .foregroundColor(.red)
-//                Spacer()
-//            }
-            .font(.subheadline)
-        }
-        .padding()
-    }
-    
-    private var priceSection: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(String(format: "%.2f", stockPrice))")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(priceChange >= 0 ? .red : .green)
-                
-                HStack(spacing: 4) {
-                    Text("\(priceChange >= 0 ? "+" : "")\(String(format: "%.2f", priceChange))")
-                    Text("(\(String(format: "%.2f", percentageChange))%)")
-                }
-                .font(.title3)
-                .foregroundColor(priceChange >= 0 ? .red : .green)
-                
-                Spacer()
-            }
-            
-            HStack {
-                GridRow("最高", value: "1115.00", color: .red)
-                GridRow("最低", value: "1100.00", color: .green)
-                GridRow("總量", value: "\(volume)", color: .white)
-            }
         }
         .padding(.horizontal)
+        .padding(.top, 4)
     }
     
-    private var tabSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 20) {
-                ForEach(tabs, id: \.self) { tab in
-                    Button(action: { selectedTab = tab }) {
-                        VStack {
-                            Text(tab)
-                                .foregroundColor(selectedTab == tab ? .white : .gray)
-                            Rectangle()
-                                .fill(selectedTab == tab ? Color.blue : Color.clear)
-                                .frame(height: 2)
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal)
-        }
-        .background(Color.black)
-    }
-    
-    private var timeRangeSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 15) {
-                ForEach(timeRanges, id: \.self) { range in
-                    Button(action: { selectedTimeRange = range }) {
-                        Text(range)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selectedTimeRange == range ? Color.orange : Color.clear)
-                            .cornerRadius(15)
-                            .foregroundColor(selectedTimeRange == range ? .white : .gray)
-                    }
-                }
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
+    private var marketContent: some View {
+        VStack(spacing: 12) {
+           // 走勢圖
+            chartSection
         }
     }
     
     private var chartSection: some View {
         VStack {
-            Chart {
-                LineMark(
-                    x: .value("Time", Date()),
-                    y: .value("Price", stockPrice)
-                )
-                .foregroundStyle(.green)
+            if !priceHistory.isEmpty {
+                Chart {
+                    ForEach(priceHistory, id: \.0) { item in
+                        LineMark(
+                            x: .value("Time", item.0),
+                            y: .value("Price", item.1)
+                        )
+                        .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
+                    }
+                }
+                .frame(height: 250)
+                .padding(8)
+            } else {
+                ProgressView()
+                    .frame(height: 250)
             }
-            .frame(height: 300)
-            .padding()
+        }
+        .background(Color(white: 0.1))
+        .cornerRadius(10)
+    }
+    
+    private var klineContent: some View {
+        VStack(spacing: 12) {
+            if let latestData = klineData.last {
+                KLineInfoCard(data: latestData)
+            }
+            
+            KLineChartView(
+                data: klineData,
+                maxPrice: klineData.map { $0.high }.max() ?? 0,
+                minPrice: klineData.map { $0.low }.min() ?? 0
+            )
         }
     }
     
-    // MARK: - Helper Views
-    private struct GridRow: View {
-        let title: String
-        let value: String
-        let color: Color
-        
-        init(_ title: String, value: String, color: Color) {
-            self.title = title
-            self.value = value
-            self.color = color
-        }
-        
-        var body: some View {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                Text(value)
-                    .font(.body)
-                    .foregroundColor(color)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
+    private var analysisContent: some View {
+        Text("技術分析開發中...")
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+    
+    private var newsContent: some View {
+        Text("新聞內容開發中...")
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+    
+    private var chipContent: some View {
+        Text("籌碼資訊開發中...")
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+    
+    private var basicContent: some View {
+        Text("基本資料開發中...")
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, minHeight: 200)
+    }
+    
+    private var financialContent: some View {
+        Text("財務資訊開發中...")
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, minHeight: 200)
     }
     
     // MARK: - Data Loading
+    
+    // 在 loadStockData 方法中添加 K 線數據加載
+    private func loadKLineData() async {
+        let calendar = Calendar.current
+        var tempData: [KLineData] = []
+        
+        // 模擬生成 30 天的 K 線數據
+        for day in 0..<30 {
+            guard let date = calendar.date(byAdding: .day, value: -day, to: Date()) else { continue }
+            
+            if let basePrice = await stockService.getStockPrice(symbol: symbol, date: date) {
+                let variation = Double.random(in: -5...5)
+                let data = KLineData(
+                    date: date,
+                    open: basePrice * (1 + Double.random(in: -0.02...0.02)),
+                    high: basePrice * (1 + Double.random(in: 0.01...0.03)),
+                    low: basePrice * (1 + Double.random(in: -0.03...(-0.01))),
+                    close: basePrice * (1 + variation / 100),
+                    volume: Int.random(in: 1000000...5000000)
+                )
+                tempData.append(data)
+            }
+        }
+        
+        await MainActor.run {
+            klineData = tempData.reversed()
+        }
+    }
+    
+    
+    
     private func loadStockData() async {
+        isLoading = true
+        var history: [(Date, Double)] = []
+        
         if let currentPrice = await stockService.getStockPrice(symbol: symbol, date: Date()) {
+            stockPrice = currentPrice
+            
             let calendar = Calendar.current
             if let yesterdayDate = calendar.date(byAdding: .day, value: -1, to: Date()),
                let yesterdayPrice = await stockService.getStockPrice(symbol: symbol, date: yesterdayDate) {
                 
-                await MainActor.run {
-                    stockPrice = currentPrice
-                    priceChange = currentPrice - yesterdayPrice
-                    percentageChange = (priceChange / yesterdayPrice) * 100
-                    volume = Int.random(in: 10000...50000)
-                    isLoading = false
+                previousPrice = yesterdayPrice
+                priceChange = currentPrice - previousPrice
+                percentageChange = (priceChange / previousPrice) * 100
+                volume = Int.random(in: 10000...50000)
+                
+                let startOfDay = calendar.startOfDay(for: Date())
+                for hour in 9...13 {
+                    for minute in stride(from: 0, through: 30, by: 30) {
+                        guard let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: startOfDay),
+                              date <= Date() else { continue }
+                        
+                        if let price = await stockService.getStockPrice(symbol: symbol, date: date) {
+                            history.append((date, price))
+                        }
+                    }
                 }
             }
+        }
+        
+        await MainActor.run {
+            priceHistory = history.sorted { $0.0 < $1.0 }
+            isLoading = false
         }
     }
 }

@@ -59,7 +59,7 @@ struct WatchStockCard: View {
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
             }
-            .frame(width: 75, alignment: .leading)
+            .frame(width: 70, alignment: .leading)
             
             if !isLoading && !isEditing {
                 // 中間：走勢圖
@@ -72,7 +72,7 @@ struct WatchStockCard: View {
                         .foregroundStyle(priceChange >= 0 ? Color.red : Color.green)
                     }
                 }
-                .frame(width: 80, height: 25)
+                .frame(width: 70, height: 25)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
             }
@@ -112,7 +112,7 @@ struct WatchStockCard: View {
         }
         .frame(height: 40)
         .padding(.vertical, 8)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 6)
         .background(Color.black.opacity(0.3))
         .cornerRadius(10)
         .overlay(

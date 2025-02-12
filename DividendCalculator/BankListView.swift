@@ -52,12 +52,14 @@ struct BankListView: View {
                         dividendYield: portfolioMetrics.dividendYield
                     )
                     .padding(.horizontal, 12)
-                    .padding(.top, 8)
+                    .padding(.top, 20)
                     .padding(.bottom, 12)
                     
                     if banks.isEmpty {
                         // 空狀態
+                        Spacer()
                         emptyStateView
+                        Spacer()
                     } else {
                         // 銀行卡片列表
                         
@@ -78,7 +80,7 @@ struct BankListView: View {
                         }
                         .listStyle(PlainListStyle())
                         .environment(\.editMode, .constant(isEditing ? .active : .inactive))
-                        .padding(.horizontal,12)
+                        .padding(.horizontal,0)
                         .padding(.vertical, 8)
                 }
             }
@@ -135,6 +137,7 @@ struct BankListView: View {
     
     // 空狀態視圖
     private var emptyStateView: some View {
+        
         VStack(spacing: 16) {
             Image(systemName: "building.columns.fill")
                 .font(.system(size: 48))
@@ -148,8 +151,8 @@ struct BankListView: View {
                 .font(.subheadline)
                 .foregroundColor(.gray.opacity(0.8))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.bottom, 80)
+//        .frame(maxWidth: .infinity, maxHeight: .infinity)
+//        .padding(.bottom, 80)
     }
     
     // 銀行卡片視圖
@@ -186,25 +189,30 @@ struct BankListView: View {
                 }
             } else {
                 // 一般模式
-                Button(action: {
-                    // 導航到股票投資組合
-                }) {
-                    HStack {
-                        Text(bank.name)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                        
-                        Spacer()
-                        
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.gray)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                HStack {
+                    Text(bank.name)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
                     
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.gray)
                 }
+                .padding(.horizontal, 25)
+                .padding(.vertical, 8)
             }
+            NavigationLink(
+                destination: StockPortfolioView(
+                    stocks: $stocks,
+                    bankId: bank.id,
+                    bankName: bank.name
+                )
+            ) {
+                EmptyView()
+            }
+            .opacity(0)
         }
         .frame(height: 44)
     }
