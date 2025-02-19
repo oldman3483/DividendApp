@@ -110,12 +110,20 @@ struct StockListSection: View {
 struct PortfolioView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
-        
+    
     @State private var isEditing = false
     @State private var showingSearchView = false
+    @State private var selectedStockType: StockType = .all
     
     let bankId: UUID
     let bankName: String
+    
+    // 定義股票類型枚舉
+    enum StockType: String, CaseIterable {
+        case all = "全部"
+        case regularInvestment = "定期定額"
+        case normal = "一般持股"
+    }
     
     // 替換原有的計算屬性
     private func getBankStocks() -> [Stock] {
@@ -135,11 +143,67 @@ struct PortfolioView: View {
     }
     
     private func calculateTotalAnnualDividend() -> Double {
-        let regularInvestments = getRegularInvestments()
-        let normalStocks = getNormalStocks()
-        
-        return regularInvestments.reduce(0) { $0 + $1.calculateTotalAnnualDividend() } +
-               normalStocks.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
+        switch selectedStockType {
+        case .all:
+            let regularInvestments = getRegularInvestments()
+            let normalStocks = getNormalStocks()
+            
+            return regularInvestments.reduce(0) { $0 + $1.calculateTotalAnnualDividend() } +
+            normalStocks.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
+            
+        case .regularInvestment:
+            let regularInvestments = getRegularInvestments()
+            return regularInvestments.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
+            
+        case .normal:
+            let normalStocks = getNormalStocks()
+            return normalStocks.reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
+        }
+    }
+    
+    private func getStockCount() -> Int {
+        switch selectedStockType {
+        case .all:
+            return getRegularInvestments().count + getNormalStocks().count
+        case .regularInvestment:
+            return getRegularInvestments().count
+        case .normal:
+            return getNormalStocks().count
+        }
+    }
+    // 股票類型選擇器
+    private var stockTypeSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 15) {
+                ForEach(StockType.allCases, id: \.self) { type in
+                    Button(action: {
+                        withAnimation {
+                            selectedStockType = type
+                        }
+                    }) {
+                        Text(type.rawValue)
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 8)
+                            .background(selectedStockType == type ? Color.blue : Color.gray.opacity(0.2))
+                            .foregroundColor(.white)
+                            .cornerRadius(20)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .background(Color.clear)
+    }
+    // 過濾股票的方法
+    private func filteredStocks() -> [WeightedStockInfo] {
+        switch selectedStockType {
+        case .all:
+            return getRegularInvestments() + getNormalStocks()
+        case .regularInvestment:
+            return getRegularInvestments()
+        case .normal:
+            return getNormalStocks()
+        }
     }
     
     var body: some View {
@@ -147,74 +211,39 @@ struct PortfolioView: View {
             Color.black.ignoresSafeArea()
             
             VStack(spacing: 0) {
+                // 添加股票類型選擇器
+                stockTypeSelector
+                    .padding(.bottom, 10)
+                
                 List {
                     // 總覽區塊
                     PortfolioSummarySection(
-                        stockCount: getRegularInvestments().count + getNormalStocks().count,
+                        stockCount: getStockCount(),
                         totalAnnualDividend: calculateTotalAnnualDividend()
                     )
                     
-                    if getRegularInvestments().isEmpty && getNormalStocks().isEmpty {
+                    if filteredStocks().isEmpty {
                         EmptyStateView()
                     } else {
-                        // 定期定額區塊
-                        if !getRegularInvestments().isEmpty {
-                            Section(header:
-                                        Text("定期定額")
-                                .font(.headline)
-                                .foregroundColor(.blue)
-                                .padding(.top, 20)
-                            ) {
-                                StockListSection(
-                                    stockInfos: getRegularInvestments(),
-                                    isEditing: isEditing,
-                                    onDelete: deleteRegularStocks,
-                                    onMove: moveRegularStocks
-                                )
-                                .overlay {
-                                    ForEach(getRegularInvestments()) { stockInfo in
-                                        NavigationLink(
-                                            destination: PortfolioDetailView(
-                                                stocks: $stocks,
-                                                symbol: stockInfo.symbol,
-                                                bankId: bankId
-                                            )
-                                        ) {
-                                            EmptyView()
-                                        }
-                                        .opacity(0)
+                        Section {
+                            StockListSection(
+                                stockInfos: filteredStocks(),
+                                isEditing: isEditing,
+                                onDelete: deleteSelectedStocks,
+                                onMove: moveSelectedStocks
+                            )
+                            .overlay {
+                                ForEach(filteredStocks()) { stockInfo in
+                                    NavigationLink(
+                                        destination: PortfolioDetailView(
+                                            stocks: $stocks,
+                                            symbol: stockInfo.symbol,
+                                            bankId: bankId
+                                        )
+                                    ) {
+                                        EmptyView()
                                     }
-                                }
-                            }
-                        }
-                        
-                        // 一般持股區塊
-                        if !getNormalStocks().isEmpty {
-                            Section(header:
-                                        Text("一般持股")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .padding(.top, 20)
-                            ) {
-                                StockListSection(
-                                    stockInfos: getNormalStocks(),
-                                    isEditing: isEditing,
-                                    onDelete: deleteNormalStocks,
-                                    onMove: moveNormalStocks
-                                )
-                                .overlay {
-                                    ForEach(getNormalStocks()) { stockInfo in
-                                        NavigationLink(
-                                            destination: PortfolioDetailView(
-                                                stocks: $stocks,
-                                                symbol: stockInfo.symbol,
-                                                bankId: bankId
-                                            )
-                                        ) {
-                                            EmptyView()
-                                        }
-                                        .opacity(0)
-                                    }
+                                    .opacity(0)
                                 }
                             }
                         }
@@ -228,49 +257,24 @@ struct PortfolioView: View {
                 showingSearchView = true
             })
         }
-        // 其餘代碼保持不變
+        // 其餘程式碼保持不變
     }
     
-    // 刪除和移動方法也需要相應修改
-    private func deleteRegularStocks(at offsets: IndexSet) {
-        let stocksToDelete = offsets.map { getRegularInvestments()[$0] }
+    // 新增通用的刪除和移動方法
+    private func deleteSelectedStocks(at offsets: IndexSet) {
+        let stocksToDelete = offsets.map { filteredStocks()[$0] }
         stocks.removeAll { stock in
-            stocksToDelete.contains { $0.symbol == stock.symbol && stock.bankId == bankId && stock.regularInvestment != nil }
+            stocksToDelete.contains { $0.symbol == stock.symbol && stock.bankId == bankId }
         }
     }
     
-    private func moveRegularStocks(from source: IndexSet, to destination: Int) {
-        var sortOrder = getRegularInvestments().map { $0.symbol }
+    private func moveSelectedStocks(from source: IndexSet, to destination: Int) {
+        var sortOrder = filteredStocks().map { $0.symbol }
         sortOrder.move(fromOffsets: source, toOffset: destination)
         
         let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
         stocks = stocks.sorted { (stock1, stock2) in
-            guard stock1.bankId == bankId, stock2.bankId == bankId,
-                  stock1.regularInvestment != nil, stock2.regularInvestment != nil else {
-                return false
-            }
-            let index1 = orderDict[stock1.symbol] ?? 0
-            let index2 = orderDict[stock2.symbol] ?? 0
-            return index1 < index2
-        }
-    }
-    
-    // 對於 normalStocks 也做相同的修改
-    private func deleteNormalStocks(at offsets: IndexSet) {
-        let stocksToDelete = offsets.map { getNormalStocks()[$0] }
-        stocks.removeAll { stock in
-            stocksToDelete.contains { $0.symbol == stock.symbol && stock.bankId == bankId && stock.regularInvestment == nil }
-        }
-    }
-    
-    private func moveNormalStocks(from source: IndexSet, to destination: Int) {
-        var sortOrder = getNormalStocks().map { $0.symbol }
-        sortOrder.move(fromOffsets: source, toOffset: destination)
-        
-        let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
-        stocks = stocks.sorted { (stock1, stock2) in
-            guard stock1.bankId == bankId, stock2.bankId == bankId,
-                  stock1.regularInvestment == nil, stock2.regularInvestment == nil else {
+            guard stock1.bankId == bankId, stock2.bankId == bankId else {
                 return false
             }
             let index1 = orderDict[stock1.symbol] ?? 0

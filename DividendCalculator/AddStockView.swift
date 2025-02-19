@@ -361,7 +361,7 @@ struct AddStockView: View {
     
     private func addToWatchlist() {
         // 獲取選中的觀察清單名稱
-        let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
+//        let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
         
         // 检查是否已存在
         let exists = watchlist.contains { $0.symbol == initialSymbol && $0.listName == selectedWatchlist }

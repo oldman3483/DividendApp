@@ -279,13 +279,14 @@ struct Stock: Identifiable, Codable, Equatable {
 
 // MARK: - 加權平均後的股票資訊結構
 struct WeightedStockInfo: Identifiable {
-    var id: String { symbol }
+    var id: String { "\(symbol)-\(isRegularInvestment ? "regular" : "normal")"  }
     let symbol: String
     let name: String
     let totalShares: Int
     let weightedDividendPerShare: Double
     let frequency: Int
     let details: [Stock]
+    let isRegularInvestment: Bool
     
     /// 計算加權平均購買價格
     var weightedPurchasePrice: Double? {
@@ -313,58 +314,55 @@ struct WeightedStockInfo: Identifiable {
 
 // MARK: - Array Extensions
 extension Array where Element == Stock {
-    /// 將相同股票分組
-    func groupedBySymbol() -> [String: [Stock]] {
-        Dictionary(grouping: self) { $0.symbol }
-    }
-    
-    /// 計算加權平均數據
-    func calculateWeightedAverage(forBankId bankId: UUID? = nil, debugLabel: String = "") -> [WeightedStockInfo] {
+    func calculateWeightedAverage(forBankId bankId: UUID? = nil) -> [WeightedStockInfo] {
+        // 1. 過濾指定銀行的股票
+        let filteredStocks = bankId != nil ? self.filter { $0.bankId == bankId } : self
         
-        // 只在必要時打印診斷信息
-        #if DEBUG
-        print("=== 加權計算診斷：\(debugLabel) ===")
-        print("原始股票數量: \(self.count)")
-        #endif
+        // 2. 分組股票（根據股票代號和投資類型）
+        var stockGroups: [String: [Stock]] = [:]
+        for stock in filteredStocks {
+            let isRegular = stock.regularInvestment != nil
+            let key = "\(stock.symbol)-\(isRegular ? "regular" : "normal")"
+            stockGroups[key, default: []].append(stock)
+        }
         
-        let stocks = bankId != nil ? self.filter { $0.bankId == bankId } : self
-        let groupedStocks = Dictionary(grouping: stocks) { $0.symbol }
+        // 3. 轉換成 WeightedStockInfo
+        var result: [WeightedStockInfo] = []
         
-        #if DEBUG
-        print("分組後的股票組數: \(groupedStocks.count)")
-        #endif
-        
-        return groupedStocks.map { symbol, stocks in
+        for stockGroup in stockGroups.values {
+            guard let firstStock = stockGroup.first else { continue }
             
-            let totalShares = stocks.reduce(0) { $0 + $1.totalShares }
+            // 計算總持股數
+            let totalShares = stockGroup.reduce(0) { sum, stock in
+                sum + stock.totalShares
+            }
             
             // 計算加權平均股利
-            let weightedDividend = stocks.reduce(0.0) { sum, stock in
-                sum + (stock.dividendPerShare * Double(stock.totalShares))
-            } / Double(totalShares)
+            let weightedDividend: Double
+            if totalShares > 0 {
+                let totalDividend = stockGroup.reduce(0.0) { sum, stock in
+                    sum + (stock.dividendPerShare * Double(stock.totalShares))
+                }
+                weightedDividend = totalDividend / Double(totalShares)
+            } else {
+                weightedDividend = 0
+            }
             
-        #if DEBUG
-         print("股票代號: \(symbol)")
-         print("該代號股票數量: \(stocks.count)")
-         print("WeightedStockInfo:")
-         print("  代號: \(symbol)")
-         print("  總股數: \(totalShares)")
-         print("  加權股利: \(weightedDividend)")
-         #endif
-            
-            let frequency = stocks[0].frequency // 假設同一股票的發放頻率相同
-            
-            return WeightedStockInfo(
-                symbol: symbol,
-                name: stocks[0].name,
+            // 創建 WeightedStockInfo
+            let info = WeightedStockInfo(
+                symbol: firstStock.symbol,
+                name: firstStock.name,
                 totalShares: totalShares,
                 weightedDividendPerShare: weightedDividend,
-                frequency: frequency,
-                details: stocks
+                frequency: firstStock.frequency,
+                details: stockGroup,
+                isRegularInvestment: firstStock.regularInvestment != nil
             )
             
-        }.sorted { $0.symbol < $1.symbol }
+            result.append(info)
+        }
+        
+        // 4. 根據股票代號排序並返回
+        return result.sorted { $0.symbol < $1.symbol }
     }
 }
-
-
