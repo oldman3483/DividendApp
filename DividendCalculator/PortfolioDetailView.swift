@@ -148,11 +148,7 @@ struct PortfolioDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(symbol)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("返回") {
-                        dismiss()
-                    }
-                }
+                
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if !regularInvestments.isEmpty || !normalStocks.isEmpty {
