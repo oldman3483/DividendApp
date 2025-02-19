@@ -10,7 +10,7 @@ import Foundation
 enum StockDetailTab: String, CaseIterable {
     case market = "行情"
     case kline = "K線"
-    case analysis = "評析"
+//    case analysis = "評析"
     case news = "新聞"
     case chip = "籌碼"
     case basic = "基本"
@@ -22,8 +22,8 @@ enum StockDetailTab: String, CaseIterable {
             return ["當日", "五日", "近月", "三月", "六月", "一年", "五年"]
         case .kline:
             return ["日K", "週K", "月K", "季K", "年K"]
-        case .analysis:
-            return ["技術面", "基本面", "籌碼面"]
+//        case .analysis:
+//            return ["技術面", "基本面", "籌碼面"]
         case .news:
             return ["即時", "今日", "本週", "本月"]
         case .chip:

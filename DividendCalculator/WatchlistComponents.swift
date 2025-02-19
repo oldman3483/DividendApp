@@ -88,6 +88,9 @@ struct AddWatchlistForm: View {
 struct WatchlistContent: View {
     let stocks: [WatchStock]
     let isEditing: Bool
+    @Binding var allStocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
     
     var body: some View {
         List {
@@ -98,7 +101,12 @@ struct WatchlistContent: View {
                     .listRowBackground(Color.clear)
             } else {
                 ForEach(stocks) { stock in
-                    WatchStockCard(stock: stock)
+                    WatchStockCard(
+                        stock: stock,
+                        stocks: $allStocks,
+                        watchlist: $watchlist,
+                        banks: $banks
+                    )
                         .listRowInsets(EdgeInsets(top: 6, leading: isEditing ? 0 : 16, bottom: 6, trailing: 16))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)

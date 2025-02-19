@@ -24,6 +24,13 @@ struct StockDetailPage: View {
     @State private var isLoading = true
     @State private var priceHistory: [(Date, Double)] = []
     @State private var klineData: [KLineData] = []
+    @State private var showingAddStockView = false
+    @State private var isInWatchlist = false
+    @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
+    
+    let bankId: UUID?
     
     private let stockService = LocalStockService()
     
@@ -62,8 +69,8 @@ struct StockDetailPage: View {
                             marketContent
                         case .kline:
                             klineContent
-                        case .analysis:
-                            analysisContent
+//                        case .analysis:
+//                            analysisContent
                         case .news:
                             newsContent
                         case .chip:
@@ -82,18 +89,33 @@ struct StockDetailPage: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {}) {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.yellow)
+                Button(action: {
+                    showingAddStockView = true
+                }) {
+                    Image(systemName: isInWatchlist ? "star.fill" : "star")
+                        .foregroundColor(isInWatchlist ? .yellow : .gray)
                 }
             }
         }
+        .sheet(isPresented: $showingAddStockView) {
+            AddStockView(
+                stocks: $stocks,
+                watchlist: $watchlist,
+                banks: $banks,
+                initialSymbol: symbol,
+                initialName: name,
+                bankId: UUID(),
+                isFromBankPortfolio: false
+            )
+        }
         .task {
             await loadStockData()
+            checkWatchlistStatus()
         }
-        .onChange(of: selectedTab) { oldTab,newTab in
-            selectedTimeRange = newTab.timeRanges[0]
-        }
+    }
+    
+    private func checkWatchlistStatus() {
+        isInWatchlist = watchlist.contains{ $0.symbol == symbol }
     }
     
     // MARK: - View Components

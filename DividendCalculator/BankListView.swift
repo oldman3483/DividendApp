@@ -204,7 +204,7 @@ struct BankListView: View {
                 .padding(.vertical, 8)
             }
             NavigationLink(
-                destination: StockPortfolioView(
+                destination: PortfolioView(
                     stocks: $stocks,
                     bankId: bank.id,
                     bankName: bank.name

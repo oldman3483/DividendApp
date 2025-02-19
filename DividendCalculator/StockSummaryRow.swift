@@ -10,7 +10,16 @@ import SwiftUI
 struct StockSummaryRow: View {
     let stockInfo: WeightedStockInfo
     let isEditing: Bool
-
+    
+    private var regularInvestmentCount: Int {
+        stockInfo.details.filter { $0.regularInvestment != nil }.count
+    }
+    
+    private var totalRegularAmount: Double {
+        stockInfo.details
+            .compactMap { $0.regularInvestment }
+            .reduce(0) { $0 + $1.amount }
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -27,23 +36,38 @@ struct StockSummaryRow: View {
                         .foregroundColor(.gray)
                 }
                 
-                // 第二行：股利信息
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("加權股利")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text("$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))")
+                // 第二行：定期定額信息或股利信息
+                if hasRegularInvestment {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("\(regularInvestmentCount) 個定期定額計畫")
+                                .font(.system(size: 12))
+                                .foregroundColor(.blue)
+                            Spacer()
+                            Text("每期總金額：$\(Int(totalRegularAmount).formattedWithComma)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                        }
                     }
-                    
-                    Spacer()
-                    
-                    VStack(alignment: .trailing) {
-                        Text("年化股利")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        Text("$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))")
-                            .foregroundColor(.green)
+                } else {
+                    // 一般持股的股利信息顯示
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("加權股利")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))")
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing) {
+                            Text("年化股利")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))")
+                                .foregroundColor(.green)
+                        }
                     }
                 }
             }
@@ -55,5 +79,9 @@ struct StockSummaryRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+    
+    private var hasRegularInvestment: Bool {
+        stockInfo.details.contains { $0.regularInvestment != nil }
     }
 }

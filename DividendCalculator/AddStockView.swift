@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AddStockView: View {
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismiss) var dismiss
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
     @Binding var banks: [Bank]
@@ -17,8 +17,8 @@ struct AddStockView: View {
     let initialName: String
     let bankId: UUID
     let isFromBankPortfolio: Bool
-
     
+    // 一般購買相關
     @State private var shares: String = ""
     @State private var dividendPerShare: String = ""
     @State private var frequency: Int?
@@ -29,6 +29,15 @@ struct AddStockView: View {
     @State private var isLoadingPrice: Bool = false
     @State private var selectedBankId: UUID
     @State private var selectedWatchlist: String
+    
+    // 定期定額相關
+    @State private var isRegularInvestment: Bool = false
+    @State private var regularAmount: String = ""
+    @State private var regularFrequency: RegularInvestment.Frequency = .monthly
+    @State private var regularStartDate = Date()
+    @State private var regularEndDate: Date? = nil
+    @State private var hasEndDate: Bool = false
+    @State private var regularNote: String = ""
     
     private let localStockService = LocalStockService()
     private let destinations = ["銀行", "觀察清單"]
@@ -43,9 +52,24 @@ struct AddStockView: View {
         self.bankId = bankId
         self.isFromBankPortfolio = isFromBankPortfolio
         
+        // 如果銀行列表不為空，優先選擇第一個銀行
+        let initialBank = banks.wrappedValue.first ?? Bank(name: "預設銀行")
+        _selectedBankId = State(initialValue: initialBank.id)
+        
         let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames")?[0] ?? "自選清單1"
         _selectedWatchlist = State(initialValue: defaultWatchlist)
-        _selectedBankId = State(initialValue: bankId)
+    }
+    
+    private func shouldDisableAddButton() -> Bool {
+        if selectedDestination == "銀行" {
+            if isRegularInvestment {
+                return regularAmount.isEmpty ||
+                       (hasEndDate && regularEndDate == nil)
+            } else {
+                return shares.isEmpty
+            }
+        }
+        return false
     }
     
     var body: some View {
@@ -66,26 +90,24 @@ struct AddStockView: View {
                 }
                 
                 // 根據來源決定是否顯示選擇目的地區塊
-
                 if !isFromBankPortfolio {
-                    
                     Section(header: Text("新增至")) {
-                        Picker("選擇目標", selection: $selectedDestination) {
-                            ForEach(destinations, id: \.self) { destination in
-                                Text(destination)
+                        if !isRegularInvestment {
+                            Picker("選擇目標", selection: $selectedDestination) {
+                                ForEach(destinations, id: \.self) { destination in
+                                    Text(destination)
+                                }
                             }
+                            .pickerStyle(SegmentedPickerStyle())
                         }
-                        .pickerStyle(SegmentedPickerStyle())
                         
                         if selectedDestination == "銀行" {
-                            // 銀行列表選擇器
                             Picker("選擇銀行", selection: $selectedBankId) {
                                 ForEach(banks) { bank in
                                     Text(bank.name).tag(bank.id)
                                 }
                             }
-                        } else {
-                            // 觀察清單選擇器
+                        } else if !isRegularInvestment {
                             let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
                             Picker("選擇觀察清單", selection: $selectedWatchlist) {
                                 ForEach(watchlistNames, id: \.self) { listName in
@@ -100,10 +122,26 @@ struct AddStockView: View {
                 if selectedDestination == "銀行" || isFromBankPortfolio {
                     // 交易信息區塊
                     Section(header: Text("交易資訊")) {
-                        TextField("持股數量", text: $shares)
-                            .keyboardType(.numberPad)
+                        Toggle("定期定額", isOn: $isRegularInvestment)
+                            .onChange(of: isRegularInvestment) { _, isEnabled in
+                                if isEnabled {
+                                    selectedDestination = "銀行"
+                                    shares = ""
+                                    regularStartDate = purchaseDate
+                                }
+                            }
+                        
+                        if !isRegularInvestment {
+                            TextField("持股數量", text: $shares)
+                                .keyboardType(.numberPad)
+                        }
                         
                         DatePicker("買入日期", selection: $purchaseDate, displayedComponents: .date)
+                            .onChange(of: purchaseDate) { _, newDate in
+                                if isRegularInvestment {
+                                    regularStartDate = newDate
+                                }
+                            }
                         
                         if !purchasePrice.isEmpty {
                             HStack {
@@ -112,6 +150,36 @@ struct AddStockView: View {
                                 Text("$\(purchasePrice)")
                                     .foregroundColor(.gray)
                             }
+                        }
+                    }
+                    
+                    // 定期定額設定區塊
+                    if isRegularInvestment {
+                        Section(header: Text("定期定額設定")) {
+                            TextField("每期投資金額", text: $regularAmount)
+                                .keyboardType(.numberPad)
+                            
+                            Picker("投資頻率", selection: $regularFrequency) {
+                                ForEach(RegularInvestment.Frequency.allCases, id: \.self) { frequency in
+                                    Text(frequency.rawValue).tag(frequency)
+                                }
+                            }
+                            
+                            DatePicker("開始日期", selection: $regularStartDate, displayedComponents: .date)
+                            
+                            Toggle("設定結束日期", isOn: $hasEndDate)
+                            
+                            if hasEndDate {
+                                DatePicker("結束日期",
+                                         selection: .init(
+                                            get: { regularEndDate ?? regularStartDate },
+                                            set: { regularEndDate = $0 }
+                                         ),
+                                         in: regularStartDate...,
+                                         displayedComponents: .date)
+                            }
+                            
+                            TextField("備註", text: $regularNote)
                         }
                     }
                     
@@ -154,14 +222,13 @@ struct AddStockView: View {
                     Button("新增") {
                         addStock()
                     }
-                    .disabled(isFromBankPortfolio || selectedDestination == "銀行" ? shares.isEmpty : false)
+                    .disabled(shouldDisableAddButton())
                 }
             }
         }
         .task {
             await loadStockData()
         }
-//        .dismissKeyboardOnTap()
     }
     
     private func getFrequencyText(_ frequency: Int) -> String {
@@ -201,41 +268,100 @@ struct AddStockView: View {
     }
     
     private func addToBank() {
-        guard let sharesInt = Int(shares) else {
-            errorMessage = "請輸入有效的持股數量"
-            return
+        
+        if banks.isEmpty {
+            let defaultBank = Bank(name: "預設銀行")
+            banks.append(defaultBank)
+            selectedBankId = defaultBank.id
         }
         
-        guard let dividendDouble = Double(dividendPerShare) else {
-            errorMessage = "無法取得股利資訊"
-            return
+        // 定期定額模式的驗證
+        if isRegularInvestment {
+            
+            print("開始新增定期定額股票")
+            print("當前銀行ID: \(selectedBankId)")
+            print("所有銀行: \(banks.map { $0.id })")
+            
+            guard let regularAmountDouble = Double(regularAmount),
+                  regularAmountDouble > 0 else {
+                errorMessage = "請輸入有效的定期定額金額"
+                return
+            }
+            
+            // 創建新的定期定額投資股票
+            let newStock = Stock(
+                symbol: initialSymbol,
+                name: initialName,
+                shares: 0, // 初始持股為 0，等待計算
+                dividendPerShare: Double(dividendPerShare) ?? 0,
+                dividendYear: Calendar.current.component(.year, from: Date()),
+                frequency: frequency ?? 1,
+                purchaseDate: regularStartDate,
+                purchasePrice: nil, // 等待計算加權平均價格
+                bankId: selectedBankId,
+                regularInvestment: RegularInvestment(
+                    amount: regularAmountDouble,
+                    frequency: regularFrequency,
+                    startDate: regularStartDate,
+                    endDate: hasEndDate ? regularEndDate : nil,
+                    isActive: true,
+                    note: regularNote
+                )
+            )
+            
+            // 計算並更新定期定額交易
+            Task {
+                var updatedStock = newStock
+                await updatedStock.updateRegularInvestmentTransactions(stockService: localStockService)
+                
+                await MainActor.run {
+                    
+                    print("嘗試新增股票")
+                    print("股票銀行ID: \(newStock.bankId)")
+                    print("當前 stocks 數量: \(stocks.count)")
+                    
+                    // 直接添加股票，不使用 contains 檢查
+                    stocks.append(updatedStock)
+                    
+                    print("定期定額股票新增成功")
+                   
+                    dismiss()
+                }
+            }
+        } else {
+            // 一般購買模式（保持原有邏輯）
+            guard let sharesInt = Int(shares),
+                  sharesInt > 0 else {
+                errorMessage = "請輸入有效的持股數量"
+                return
+            }
+            
+            guard let dividendDouble = Double(dividendPerShare),
+                  let priceDouble = Double(purchasePrice) else {
+                errorMessage = "無法取得股利或股價資訊"
+                return
+            }
+            
+            let newStock = Stock(
+                symbol: initialSymbol,
+                name: initialName,
+                shares: sharesInt,
+                dividendPerShare: dividendDouble,
+                dividendYear: Calendar.current.component(.year, from: Date()),
+                frequency: frequency ?? 1,
+                purchaseDate: purchaseDate,
+                purchasePrice: priceDouble,
+                bankId: selectedBankId
+            )
+            
+            stocks.append(newStock)
+            dismiss()
         }
-        
-        guard let priceDouble = Double(purchasePrice) else {
-            errorMessage = "無法取得股價資訊"
-            return
-        }
-        
-        let newStock = Stock(
-            symbol: initialSymbol,
-            name: initialName,
-            shares: sharesInt,
-            dividendPerShare: dividendDouble,
-            dividendYear: Calendar.current.component(.year, from: Date()),
-            frequency: frequency ?? 1,
-            purchaseDate: purchaseDate,
-            purchasePrice: priceDouble,
-            bankId: selectedBankId
-        )
-        
-        stocks.append(newStock)
-        dismiss()
     }
     
     private func addToWatchlist() {
         // 获取选中的观察清单索引
         let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
-        _ = watchlistNames.firstIndex(of: selectedWatchlist) ?? 0
         
         // 检查是否已存在
         let exists = watchlist.contains { $0.symbol == initialSymbol && $0.listName == selectedWatchlist }

@@ -10,6 +10,8 @@ struct WatchlistView: View {
     // MARK: - Properties
     @State private var selectedList: Int = 0
     @Binding var watchlist: [WatchStock]
+    @Binding var stocks: [Stock]
+    @Binding var banks: [Bank]
     @State private var isEditing = false
     @State private var showingAddList = false
     @State private var newListName = ""
@@ -42,7 +44,12 @@ struct WatchlistView: View {
                         .listRowBackground(Color.clear)
                 } else {
                     ForEach(currentListStocks) { stock in
-                        WatchStockCard(stock: stock)
+                        WatchStockCard(
+                            stock: stock,
+                            stocks: $stocks,
+                            watchlist: $watchlist,
+                            banks: $banks
+                        )
                             .listRowInsets(EdgeInsets(
                                 top: 6,
                                 leading: isEditing ? 0 : 16,

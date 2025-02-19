@@ -17,9 +17,9 @@ struct SearchResultView: View {
     @State private var searchResults: [SearchStock] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
-    @State private var showingAddStockView = false
-    @State private var selectedSymbol: String = ""
-    @State private var selectedName: String = ""
+//    @State private var showingAddStockView = false
+//    @State private var selectedSymbol: String = ""
+//    @State private var selectedName: String = ""
     
     let searchText: String
     let bankId: UUID?
@@ -37,38 +37,24 @@ struct SearchResultView: View {
                 } else {
                     List {
                         ForEach(searchResults, id: \.symbol) { stock in
-                            HStack {
+                            NavigationLink(destination: StockDetailPage(
+                                symbol: stock.symbol,
+                                name: stock.name,
+                                stocks: $stocks,
+                                watchlist: $watchlist,
+                                banks: $banks,
+                                bankId: bankId
+                            
+                            )) {
                                 VStack(alignment: .leading) {
                                     Text(stock.symbol)
                                         .font(.headline)
                                     Text(stock.name)
                                         .foregroundColor(.gray)
                                 }
-                                Spacer()
-                                Button(action: {
-                                    print("選擇股票: \(stock.symbol) \(stock.name)")
-                                    selectedSymbol = stock.symbol
-                                    selectedName = stock.name
-                                    showingAddStockView = true
-                                }) {
-                                    Image(systemName: "plus.circle")
-                                        .foregroundColor(.blue)
-                                }
                             }
                         }
                     }
-                }
-            }
-            .sheet(isPresented: $showingAddStockView) {
-                NavigationStack{
-                    AddStockView(
-                        stocks: $stocks,
-                        watchlist: $watchlist,
-                        banks: $banks,
-                        initialSymbol: selectedSymbol,
-                        initialName: selectedName,
-                        bankId: bankId ?? UUID()
-                    )
                 }
             }
             .navigationTitle("搜尋結果")
@@ -82,12 +68,6 @@ struct SearchResultView: View {
             }
             .task {
                 await searchStocks()
-            }
-            .onChange(of: showingAddStockView) { oldValue,newValue in
-                print("showingAddStockView: \(newValue)") // 添加調試輸出
-                print("selectedSymbol: \(selectedSymbol)") // 添加調試輸出
-                print("selectedName: \(selectedName)") // 添加調試輸出
-                
             }
         }
     }

@@ -9,6 +9,9 @@ import Charts
 
 struct WatchStockCard: View {
     let stock: WatchStock
+    @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
     let stockService = LocalStockService()
     
     @State private var stockPrice: Double = 0.0
@@ -32,7 +35,14 @@ struct WatchStockCard: View {
     
     var body: some View {
         NavigationLink {
-            StockDetailPage(symbol: stock.symbol, name: stock.name)
+            StockDetailPage(
+                symbol: stock.symbol,
+                name: stock.name,
+                stocks: $stocks,
+                watchlist: $watchlist,
+                banks: $banks,
+                bankId: nil
+            )
         } label: {
             contentView
         }

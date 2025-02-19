@@ -66,7 +66,7 @@ struct ContentView: View {
         .onChange(of: stocks) { oldValue, newValue in saveData() }
         .onChange(of: watchlist) { oldValue, newValue in saveData() }
         .onChange(of: banks) { oldValue, newValue in
-            saveData()
+//            saveData()
             if let firstBank = newValue.first {
                 selectedBankId = firstBank.id
             }

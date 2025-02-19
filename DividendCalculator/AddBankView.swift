@@ -3,6 +3,7 @@
 //  DividendCalculator
 //
 
+
 import SwiftUI
 
 struct AddBankView: View {
@@ -99,25 +100,16 @@ struct AddBankView: View {
     }
     
     func addBank() {
-        let trimmedName = bankName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            errorMessage = "請輸入銀行名稱"
-            return
-        }
+        // 使用新的驗證系統
+        let validationResult = FormValidator.validateBankName(bankName, existingBanks: banks)
         
-        // 檢查是否已存在相同名稱的銀行
-        guard !banks.contains(where: { $0.name == trimmedName }) else {
-            errorMessage = "已存在相同名稱的銀行"
-            return
+        switch validationResult {
+        case .success:
+            let newBank = Bank(name: bankName)
+            banks.append(newBank)
+            dismiss()
+        case .failure(let message):
+            errorMessage = message
         }
-        
-        // 新增銀行
-        let newBank = Bank(name: trimmedName)
-        banks.append(newBank)
-        dismiss()
     }
-}
-
-#Preview {
-    ContentView()
 }

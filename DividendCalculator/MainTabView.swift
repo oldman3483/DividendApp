@@ -26,7 +26,11 @@ struct MainTabView: View {
             
             // Tab 2: 觀察清單
             NavigationStack {
-                WatchlistView(watchlist: $watchlist)
+                WatchlistView(
+                    watchlist: $watchlist,
+                    stocks: $stocks,
+                    banks: $banks
+                )
             }
             .padding(.top, 40)
             .tabItem {

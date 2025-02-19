@@ -26,7 +26,7 @@ struct BankListContent: View {
                     )
                     if !isEditing {
                         NavigationLink(
-                            destination: StockPortfolioView(
+                            destination: PortfolioView(
                                 stocks: $stocks,
                                 bankId: bank.id,
                                 bankName: bank.name
