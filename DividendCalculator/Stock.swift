@@ -319,18 +319,22 @@ extension Array where Element == Stock {
     }
     
     /// 計算加權平均數據
-    func calculateWeightedAverage(forBankId bankId: UUID? = nil) -> [WeightedStockInfo] {
+    func calculateWeightedAverage(forBankId bankId: UUID? = nil, debugLabel: String = "") -> [WeightedStockInfo] {
+        
+        // 只在必要時打印診斷信息
+        #if DEBUG
+        print("=== 加權計算診斷：\(debugLabel) ===")
+        print("原始股票數量: \(self.count)")
+        #endif
+        
         let stocks = bankId != nil ? self.filter { $0.bankId == bankId } : self
         let groupedStocks = Dictionary(grouping: stocks) { $0.symbol }
         
-        print("=== 加權計算診斷 ===")
-        print("原始股票數量: \(stocks.count)")
+        #if DEBUG
         print("分組後的股票組數: \(groupedStocks.count)")
+        #endif
         
         return groupedStocks.map { symbol, stocks in
-            
-            print("股票代號: \(symbol)")
-            print("該代號股票數量: \(stocks.count)")
             
             let totalShares = stocks.reduce(0) { $0 + $1.totalShares }
             
@@ -339,9 +343,18 @@ extension Array where Element == Stock {
                 sum + (stock.dividendPerShare * Double(stock.totalShares))
             } / Double(totalShares)
             
+        #if DEBUG
+         print("股票代號: \(symbol)")
+         print("該代號股票數量: \(stocks.count)")
+         print("WeightedStockInfo:")
+         print("  代號: \(symbol)")
+         print("  總股數: \(totalShares)")
+         print("  加權股利: \(weightedDividend)")
+         #endif
+            
             let frequency = stocks[0].frequency // 假設同一股票的發放頻率相同
             
-            let stockInfo = WeightedStockInfo(
+            return WeightedStockInfo(
                 symbol: symbol,
                 name: stocks[0].name,
                 totalShares: totalShares,
@@ -349,13 +362,9 @@ extension Array where Element == Stock {
                 frequency: frequency,
                 details: stocks
             )
-            print("WeightedStockInfo:")
-            print("  代號: \(stockInfo.symbol)")
-            print("  總股數: \(stockInfo.totalShares)")
-            print("  加權股利: \(stockInfo.weightedDividendPerShare)")
-            
-            return stockInfo
             
         }.sorted { $0.symbol < $1.symbol }
     }
 }
+
+
