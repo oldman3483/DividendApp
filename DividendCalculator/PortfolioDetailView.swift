@@ -18,22 +18,7 @@ struct SummaryInfo {
     var totalRegularAmount: Double = 0
 }
 
-// MARK: - 彙總資訊列元件
-struct SummaryRow: View {
-    let title: String
-    let value: String
-    var valueColor: Color = .white
-    
-    var body: some View {
-        HStack {
-            Text(title)
-                .foregroundColor(.gray)
-            Spacer()
-            Text(value)
-                .foregroundColor(valueColor)
-        }
-    }
-}
+
 
 // MARK: - 主視圖
 struct PortfolioDetailView: View {
@@ -90,32 +75,32 @@ struct PortfolioDetailView: View {
                 // 彙總資訊區塊
                 Section("彙總資訊") {
                     VStack(spacing: 16) {
-                        SummaryRow(title: "總持股數", value: "\(summaryInfo.totalShares)股")
+                        DetailRow(title: "總持股數", value: "\(summaryInfo.totalShares)股")
                         
-                        SummaryRow(
+                        DetailRow(
                             title: "總投資金額",
                             value: "$\(Int(summaryInfo.totalInvestment).formattedWithComma)"
                         )
                         
                         if summaryInfo.totalRegularAmount > 0 {
-                            SummaryRow(
+                            DetailRow(
                                 title: "定期定額總額",
                                 value: "$\(Int(summaryInfo.totalRegularAmount).formattedWithComma)"
                             )
                         }
                         
-                        SummaryRow(
+                        DetailRow(
                             title: "平均成本",
                             value: "$\(String(format: "%.2f", summaryInfo.averageCost))"
                         )
                         
-                        SummaryRow(
+                        DetailRow(
                             title: "預估年化股利",
                             value: "$\(Int(summaryInfo.annualDividend).formattedWithComma)",
                             valueColor: .green
                         )
                         
-                        SummaryRow(
+                        DetailRow(
                             title: "股利殖利率",
                             value: String(format: "%.2f%%", summaryInfo.dividendYield),
                             valueColor: .green
@@ -215,44 +200,6 @@ struct RegularInvestmentCard: View {
                 }
             }
             .padding(.vertical, 8)
-        )
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd"
-        return formatter.string(from: date)
-    }
-}
-
-struct TransactionRow: View {
-    let transaction: RegularInvestmentTransaction
-    
-    var body: some View {
-        HStack {
-            Text(formatDate(transaction.date))
-                .font(.system(size: 14))
-                .foregroundColor(transaction.isExecuted ? .white : .gray)
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("$\(Int(transaction.amount).formattedWithComma)")
-                    .font(.system(size: 14))
-                HStack(spacing: 4) {
-                    Text("\(transaction.shares)股")
-                    Text("@")
-                    Text("$\(String(format: "%.2f", transaction.price))")
-                }
-                .font(.system(size: 13))
-                .foregroundColor(.gray)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(transaction.isExecuted ? Color.clear : Color.gray.opacity(0.1))
         )
     }
     
