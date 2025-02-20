@@ -133,9 +133,9 @@ struct RegularInvestmentPlanCard: View {
                         Text("狀態")
                             .font(.caption)
                             .foregroundColor(.gray)
-                        Text(stock.regularInvestment?.isActive ?? false ? "進行中" : "已停止")
+                        Text(stock.regularInvestment?.executionStatus.description ?? "未啟用")
                             .font(.system(size: 14))
-                            .foregroundColor(stock.regularInvestment?.isActive ?? false ? .green : .red)
+                            .foregroundColor(stock.regularInvestment?.executionStatus.color ?? .gray)
                     }
                 }
                 

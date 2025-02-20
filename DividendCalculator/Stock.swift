@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 // MARK: - 定期定額交易紀錄
 struct RegularInvestmentTransaction: Codable, Identifiable, Equatable {
@@ -57,6 +58,48 @@ struct RegularInvestment: Codable, Equatable {
             case .monthly: return 30
             case .quarterly: return 90
             }
+        }
+    }
+    
+    // 定期定額執行狀態
+    enum ExecutionStatus {
+        case ongoing   // 進行中
+        case completed // 已完成
+        case stopped   // 已停止
+        case inactive  // 未啟用
+        
+        var description: String {
+            switch self {
+            case .ongoing: return "進行中"
+            case .completed: return "已完成"
+            case .stopped: return "已停止"
+            case .inactive: return "未啟用"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .ongoing: return .green
+            case .completed: return .blue
+            case .stopped: return .red
+            case .inactive: return .gray
+            }
+        }
+    }
+    // 計算執行狀態
+    var executionStatus: ExecutionStatus {
+        guard let transactions = transactions,
+              !transactions.isEmpty else {
+            return .inactive
+        }
+        
+        let hasPendingTransactions = transactions.contains { !$0.isExecuted }
+        if !isActive {
+            return .stopped
+        } else if !hasPendingTransactions {
+            return .completed
+        } else {
+            return .ongoing
         }
     }
     
@@ -276,6 +319,7 @@ struct Stock: Identifiable, Codable, Equatable {
         return self.symbol == other.symbol && self.bankId == other.bankId
     }
 }
+
 
 // MARK: - 加權平均後的股票資訊結構
 struct WeightedStockInfo: Identifiable {

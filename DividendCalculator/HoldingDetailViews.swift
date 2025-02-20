@@ -211,8 +211,8 @@ struct RegularInvestmentDetailView: View {
                         }
                         DetailRow(
                             title: "執行狀態",
-                            value: stock?.regularInvestment?.isActive ?? false ? "進行中" : "已停止",
-                            valueColor: stock?.regularInvestment?.isActive ?? false ? .green : .red
+                            value: stock?.regularInvestment?.executionStatus.description ?? "未啟用",
+                            valueColor: stock?.regularInvestment?.executionStatus.color ?? .gray
                         )
                         if let note = stock?.regularInvestment?.note, !note.isEmpty {
                             DetailRow(title: "備註", value: note)
