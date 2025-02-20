@@ -14,8 +14,8 @@ struct NormalStockDetailView: View {
     let symbol: String
     let bankId: UUID
     
-    private var stock: Stock? {
-        stocks.first { $0.symbol == symbol && $0.bankId == bankId && $0.regularInvestment == nil }
+    private var normalStocks: [Stock] {
+        stocks.filter { $0.symbol == symbol && $0.bankId == bankId && $0.regularInvestment == nil }
     }
     
     var body: some View {
@@ -23,38 +23,37 @@ struct NormalStockDetailView: View {
             VStack(spacing: 20) {
                 // 基本資訊卡片
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
                         // 股票基本資訊
                         HStack {
                             Text(symbol)
                                 .font(.title2)
                                 .bold()
-                            Text(stock?.name ?? "")
+                            Text(normalStocks.first?.name ?? "")
                                 .foregroundColor(.gray)
                         }
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 5)
                         
-                        // 持股資訊
-                        DetailRow(title: "持股數量", value: "\(stock?.shares ?? 0) 股")
-                        DetailRow(title: "購買日期", value: formatDate(stock?.purchaseDate))
-                        if let price = stock?.purchasePrice {
-                            DetailRow(title: "購買價格", value: String(format: "$ %.2f", price))
-                        }
-                        if let avgCost = stock?.calculateAverageCost() {
+                        // 彙總持股資訊
+                        let totalShares = normalStocks.reduce(0) { $0 + $1.shares }
+                        DetailRow(title: "總持股數量", value: "\(totalShares) 股")
+                        
+                        if let avgCost = calculateAverageCost() {
                             DetailRow(title: "平均成本", value: String(format: "$ %.2f", avgCost))
                         }
                     }
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
                 // 股利資訊卡片
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("股利資訊")
                             .font(.headline)
                             .padding(.bottom, 4)
                         
+                        let stock = normalStocks.first
                         DetailRow(
                             title: "每股股利",
                             value: String(format: "$ %.2f", stock?.dividendPerShare ?? 0)
@@ -65,46 +64,115 @@ struct NormalStockDetailView: View {
                         )
                         DetailRow(
                             title: "年化股利",
-                            value: String(format: "$ %.0f", stock?.calculateAnnualDividend() ?? 0),
+                            value: String(format: "$ %.0f", calculateTotalAnnualDividend()),
                             valueColor: .green
                         )
+                    }
+                    .padding(.vertical, 4)
+                }
+                .groupBoxStyle(TransparentGroupBox())
+                
+                // 績效分析卡片
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("績效分析")
+                            .font(.headline)
+                            .padding(.bottom, 4)
+                        
+                        let totalInvestment = normalStocks.reduce(0.0) {
+                            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
+                        }
+                        
+                        DetailRow(
+                            title: "總投資成本",
+                            value: String(format: "$ %.0f", totalInvestment)
+                        )
+                        
+                        DetailRow(
+                            title: "殖利率",
+                            value: String(format: "%.2f%%", calculateDividendYield()),
+                            valueColor: .green
+                        )
+                    }
+                    .padding(.vertical, 4)
+                }
+                .groupBoxStyle(TransparentGroupBox())
+                
+                
+                // 購買明細區塊
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("購買明細")
+                            .font(.headline)
+                            .padding(.bottom, 4)
+                        
+                        ForEach(normalStocks.sorted(by: { $0.purchaseDate > $1.purchaseDate }), id: \.id) { stock in
+                            purchaseDetailRow(for: stock)
+                        }
                     }
                     .padding(.vertical, 8)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
-                // 績效分析卡片
-                if let stock = stock {
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("績效分析")
-                                .font(.headline)
-                                .padding(.bottom, 4)
-                            
-                            if let purchasePrice = stock.purchasePrice {
-                                let totalCost = Double(stock.shares) * purchasePrice
-                                DetailRow(
-                                    title: "投資成本",
-                                    value: String(format: "$ %.0f", totalCost)
-                                )
-                            }
-                            
-                            DetailRow(
-                                title: "殖利率",
-                                value: String(format: "%.2f%%", stock.calculateDividendYield() ?? 0),
-                                valueColor: .green
-                            )
-                        }
-                        .padding(.vertical, 8)
-                    }
-                    .groupBoxStyle(TransparentGroupBox())
-                }
+                
             }
             .padding()
         }
         .navigationTitle("一般持股詳細資訊")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.black.ignoresSafeArea())
+    }
+    
+    private func purchaseDetailRow(for stock: Stock) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("購買日期：\(formatDate(stock.purchaseDate))")
+                        .font(.subheadline)
+                    Text("股數：\(stock.shares)股")
+                        .font(.subheadline)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let price = stock.purchasePrice {
+                        Text("股價：$\(String(format: "%.2f", price))")
+                            .font(.subheadline)
+                        Text("總成本：$\(String(format: "%.0f", Double(stock.shares) * price))")
+                            .font(.subheadline)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            
+            Divider()
+                .background(Color.gray.opacity(0.3))
+        }
+    }
+    
+    private func calculateAverageCost() -> Double? {
+        let totalInvestment = normalStocks.reduce(0.0) {
+            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
+        }
+        let totalShares = normalStocks.reduce(0) { $0 + $1.shares }
+        
+        return totalShares > 0 ? totalInvestment / Double(totalShares) : nil
+    }
+    
+    private func calculateTotalAnnualDividend() -> Double {
+        return normalStocks.reduce(0) {
+            $0 + (Double($1.shares) * $1.dividendPerShare * Double($1.frequency))
+        }
+    }
+    
+    private func calculateDividendYield() -> Double {
+        let totalInvestment = normalStocks.reduce(0.0) {
+            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
+        }
+        let totalAnnualDividend = calculateTotalAnnualDividend()
+        
+        return totalInvestment > 0 ? (totalAnnualDividend / totalInvestment) * 100 : 0
     }
 }
 
