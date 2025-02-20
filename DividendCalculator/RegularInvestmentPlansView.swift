@@ -88,13 +88,14 @@ struct RegularInvestmentPlansView: View {
     }
 }
 
-// RegularInvestmentPlanCard 不再需要 overlay 參數
+
 struct RegularInvestmentPlanCard: View {
     let stock: Stock
     
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
+                // 第一行：金額和頻率
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("每期金額")
@@ -113,11 +114,18 @@ struct RegularInvestmentPlanCard: View {
                         Text(stock.regularInvestment?.frequency.rawValue ?? "")
                             .font(.system(size: 15))
                     }
+                    
+                    // 箭頭指示器
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.gray)
+                        .font(.system(size: 14))
+                        .padding(.leading, 12)
                 }
                 
                 Divider()
                     .background(Color.gray.opacity(0.3))
                 
+                // 第二行：日期和狀態
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("開始日期")
@@ -139,6 +147,7 @@ struct RegularInvestmentPlanCard: View {
                     }
                 }
                 
+                // 第三行：累計投資和持股數
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("累計投資")
@@ -159,6 +168,7 @@ struct RegularInvestmentPlanCard: View {
                     }
                 }
                 
+                // 備註（如果有的話）
                 if let note = stock.regularInvestment?.note,
                    !note.isEmpty {
                     Text(note)
@@ -170,5 +180,16 @@ struct RegularInvestmentPlanCard: View {
         }
         .groupBoxStyle(TransparentGroupBox())
         .foregroundColor(.white)
+        .background(Color(white: 0.15))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
+        // 點擊時的反饋效果
+        .contentShape(Rectangle())
+        .buttonStyle(PlainButtonStyle())
+        // hover 效果
+        .hoverEffect(.highlight)
     }
 }
