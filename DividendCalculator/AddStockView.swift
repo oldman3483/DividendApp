@@ -137,7 +137,7 @@ struct AddStockView: View {
                         }
                         
                         DatePicker("買入日期", selection: $purchaseDate, displayedComponents: .date)
-                            .onChange(of: purchaseDate) { _, newDate in
+                            .onChange(of: purchaseDate) { oldDate, newDate in
                                 if isRegularInvestment {
                                     regularStartDate = newDate
                                 }
@@ -166,6 +166,11 @@ struct AddStockView: View {
                             }
                             
                             DatePicker("開始日期", selection: $regularStartDate, displayedComponents: .date)
+                                .onChange(of: regularStartDate) { oldValue, newDate in
+                                    withAnimation {
+                                        purchaseDate = newDate
+                                    }
+                                }
                             
                             Toggle("設定結束日期", isOn: $hasEndDate)
                             
