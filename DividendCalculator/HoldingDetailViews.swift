@@ -178,13 +178,13 @@ struct NormalStockDetailView: View {
 
 // MARK: - 定期定額詳細頁面
 struct RegularInvestmentDetailView: View {
-    @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
     let symbol: String
     let bankId: UUID
+    let planId: UUID
     
     private var stock: Stock? {
-        stocks.first { $0.symbol == symbol && $0.bankId == bankId && $0.regularInvestment != nil }
+        stocks.first { $0.id == planId }
     }
     
     var body: some View {
@@ -193,16 +193,6 @@ struct RegularInvestmentDetailView: View {
                 // 基本資訊卡片
                 GroupBox {
                     VStack(alignment: .leading, spacing: 12) {
-                        // 股票基本資訊
-                        HStack {
-                            Text(symbol)
-                                .font(.title2)
-                                .bold()
-                            Text(stock?.name ?? "")
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.bottom, 8)
-                        
                         // 定期定額設定
                         DetailRow(
                             title: "投資金額",
@@ -219,6 +209,11 @@ struct RegularInvestmentDetailView: View {
                         if let endDate = stock?.regularInvestment?.endDate {
                             DetailRow(title: "結束日期", value: formatDate(endDate))
                         }
+                        DetailRow(
+                            title: "執行狀態",
+                            value: stock?.regularInvestment?.isActive ?? false ? "進行中" : "已停止",
+                            valueColor: stock?.regularInvestment?.isActive ?? false ? .green : .red
+                        )
                         if let note = stock?.regularInvestment?.note, !note.isEmpty {
                             DetailRow(title: "備註", value: note)
                         }
@@ -248,11 +243,6 @@ struct RegularInvestmentDetailView: View {
                                 value: String(format: "$ %.2f", avgCost)
                             )
                         }
-                        DetailRow(
-                            title: "年化股利",
-                            value: String(format: "$ %.0f", stock?.calculateAnnualDividend() ?? 0),
-                            valueColor: .green
-                        )
                     }
                     .padding(.vertical, 8)
                 }
@@ -262,16 +252,93 @@ struct RegularInvestmentDetailView: View {
                 if let transactions = stock?.regularInvestment?.transactions?.sorted(by: { $0.date > $1.date }) {
                     GroupBox {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("交易記錄")
-                                .font(.headline)
-                                .padding(.bottom, 4)
+                            HStack {
+                                Text("交易記錄")
+                                    .font(.headline)
+                                Spacer()
+                                Text("\(transactions.count) 筆")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.bottom, 4)
                             
+                            // 執行狀態統計
+                            HStack(spacing: 20) {
+                                let executedCount = transactions.filter { $0.isExecuted }.count
+                                let pendingCount = transactions.filter { !$0.isExecuted }.count
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("已執行")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Text("\(executedCount)")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.green)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("待執行")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Text("\(pendingCount)")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
+                                .padding(.vertical, 8)
+                            
+                            // 交易記錄列表
                             ForEach(transactions) { transaction in
-                                TransactionRow(transaction: transaction)
-                                    .padding(.vertical, 4)
-                                if transaction != transactions.last {
-                                    Divider()
-                                        .background(Color.gray.opacity(0.3))
+                                VStack(spacing: 12) {
+                                    HStack {
+                                        Text(formatDate(transaction.date))
+                                            .font(.system(size: 15))
+                                        Spacer()
+                                        Text(transaction.isExecuted ? "已執行" : "待執行")
+                                            .font(.caption)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(transaction.isExecuted ? Color.green.opacity(0.2) : Color.orange.opacity(0.2))
+                                            )
+                                    }
+                                    
+                                    HStack(spacing: 20) {
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("投資金額")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                            Text("$\(Int(transaction.amount).formattedWithComma)")
+                                                .font(.system(size: 15, weight: .medium))
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("成交價")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                            Text("$\(String(format: "%.2f", transaction.price))")
+                                                .font(.system(size: 15, weight: .medium))
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("股數")
+                                                .font(.caption)
+                                                .foregroundColor(.gray)
+                                            Text("\(transaction.shares)")
+                                                .font(.system(size: 15, weight: .medium))
+                                        }
+                                    }
+                                    
+                                    if transaction != transactions.last {
+                                        Divider()
+                                            .background(Color.gray.opacity(0.3))
+                                            .padding(.top, 8)
+                                    }
                                 }
                             }
                         }

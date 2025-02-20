@@ -114,7 +114,7 @@ struct StockDetailView: View {
     
     var body: some View {
         if isRegularInvestment {
-            RegularInvestmentDetailView(stocks: $stocks, symbol: symbol, bankId: bankId)
+            RegularInvestmentPlansView(stocks: $stocks, symbol: symbol, bankId: bankId)
         } else {
             NormalStockDetailView(stocks: $stocks, symbol: symbol, bankId: bankId)
         }
