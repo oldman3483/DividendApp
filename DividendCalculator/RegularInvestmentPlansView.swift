@@ -37,7 +37,7 @@ struct RegularInvestmentPlansView: View {
                         }
                         .padding(.bottom, 8)
                         
-                        // 彙總資訊
+                        // 每期投資資訊
                         let totalAmount = regularInvestmentStocks.reduce(0.0) {
                             $0 + ($1.regularInvestment?.amount ?? 0)
                         }
@@ -46,21 +46,57 @@ struct RegularInvestmentPlansView: View {
                             value: String(format: "$ %.0f", totalAmount)
                         )
                         
-                        let totalInvestment = regularInvestmentStocks.reduce(0.0) {
-                            $0 + ($1.regularInvestment?.totalInvestmentAmount ?? 0)
+                        // 執行狀態分組
+                        Group {
+                            // 已執行投資金額
+                            let executedAmount = regularInvestmentStocks.reduce(0.0) { sum, stock in
+                                sum + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0.0) { $0 + $1.amount } ?? 0)
+                            }
+                            DetailRow(
+                                title: "已執行投資",
+                                value: String(format: "$ %.0f", executedAmount),
+                                valueColor: .green
+                            )
+                            
+                            // 待執行投資金額
+                            let pendingAmount = regularInvestmentStocks.reduce(0.0) { sum, stock in
+                                sum + (stock.regularInvestment?.transactions?.filter { !$0.isExecuted }.reduce(0.0) { $0 + $1.amount } ?? 0)
+                            }
+                            if pendingAmount > 0 {
+                                DetailRow(
+                                    title: "待執行投資",
+                                    value: String(format: "$ %.0f", pendingAmount),
+                                    valueColor: .gray
+                                )
+                            }
+                            
+                            // 執行狀態分隔線
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
+                                .padding(.vertical, 4)
+                            
+                            // 已執行股數
+                            let executedShares = regularInvestmentStocks.reduce(0) { sum, stock in
+                                sum + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
+                            }
+                            DetailRow(
+                                title: "已執行股數",
+                                value: "\(executedShares) 股",
+                                valueColor: .green
+                            )
+                            
+                            // 待執行股數
+                            let pendingShares = regularInvestmentStocks.reduce(0) { sum, stock in
+                                sum + (stock.regularInvestment?.transactions?.filter { !$0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
+                            }
+                            if pendingShares > 0 {
+                                DetailRow(
+                                    title: "待執行股數",
+                                    value: "\(pendingShares) 股",
+                                    valueColor: .gray
+                                )
+                            }
                         }
-                        DetailRow(
-                            title: "累計投資金額",
-                            value: String(format: "$ %.0f", totalInvestment)
-                        )
-                        
-                        let totalShares = regularInvestmentStocks.reduce(0) {
-                            $0 + ($1.regularInvestment?.totalShares ?? 0)
-                        }
-                        DetailRow(
-                            title: "總持股數",
-                            value: "\(totalShares) 股"
-                        )
                     }
                     .padding(.vertical, 8)
                 }
@@ -100,6 +136,7 @@ struct RegularInvestmentPlanCard: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.bottom, 4)
+                
                 // 第一行：金額和頻率
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -152,24 +189,64 @@ struct RegularInvestmentPlanCard: View {
                     }
                 }
                 
-                // 第三行：累計投資和持股數
+                // 第三行：已執行投資和股數
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("累計投資")
+                        Text("已執行投資")
                             .font(.caption)
                             .foregroundColor(.gray)
-                        Text("$\(Int(stock.regularInvestment?.totalInvestmentAmount ?? 0).formattedWithComma)")
+                        let executedAmount = stock.regularInvestment?.transactions?
+                            .filter { $0.isExecuted }
+                            .reduce(0.0) { $0 + $1.amount } ?? 0
+                        Text("$\(Int(executedAmount).formattedWithComma)")
                             .font(.system(size: 15))
+                            .foregroundColor(.green)
                     }
                     
                     Spacer()
                     
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("持有股數")
+                        Text("已執行股數")
                             .font(.caption)
                             .foregroundColor(.gray)
-                        Text("\(stock.regularInvestment?.totalShares ?? 0) 股")
+                        let executedShares = stock.regularInvestment?.transactions?
+                            .filter { $0.isExecuted }
+                            .reduce(0) { $0 + $1.shares } ?? 0
+                        Text("\(executedShares) 股")
                             .font(.system(size: 15))
+                            .foregroundColor(.green)
+                    }
+                }
+                
+                // 第四行：待執行投資和股數（如果有的話）
+                let pendingAmount = stock.regularInvestment?.transactions?
+                    .filter { !$0.isExecuted }
+                    .reduce(0.0) { $0 + $1.amount } ?? 0
+                let pendingShares = stock.regularInvestment?.transactions?
+                    .filter { !$0.isExecuted }
+                    .reduce(0) { $0 + $1.shares } ?? 0
+                
+                if pendingAmount > 0 || pendingShares > 0 {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("待執行投資")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("$\(Int(pendingAmount).formattedWithComma)")
+                                .font(.system(size: 15))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("待執行股數")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            Text("\(pendingShares) 股")
+                                .font(.system(size: 15))
+                                .foregroundColor(.gray)
+                        }
                     }
                 }
                 

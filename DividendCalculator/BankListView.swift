@@ -229,25 +229,52 @@ struct BankListView: View {
         
         for stock in bankStocks {
             if let currentPrice = await stockService.getStockPrice(symbol: stock.symbol, date: Date()) {
-                let stockValue = Double(stock.shares) * currentPrice
-                metrics.totalValue += stockValue
+                // 計算一般持股價值
+                let normalStockValue = Double(stock.shares) * currentPrice
                 
-                // 計算總損益
-                let profitLoss = stock.calculateProfitLoss(currentPrice: currentPrice)
-                metrics.totalProfitLoss += profitLoss
+                // 計算定期定額已執行的持股價值
+                let regularExecutedValue = stock.regularInvestment.map { investment in
+                    let executedShares = (investment.transactions ?? [])
+                        .filter { $0.isExecuted }
+                        .reduce(0) { $0 + $1.shares }
+                    return Double(executedShares) * currentPrice
+                } ?? 0.0
                 
-                // 獲取昨日價格來計算當日損益
+                metrics.totalValue += (normalStockValue + regularExecutedValue)
+                
+                // 計算總損益（只計算已執行的交易）
+                if let investment = stock.regularInvestment {
+                    // 一般持股損益
+                    let normalProfitLoss = stock.calculateProfitLoss(currentPrice: currentPrice)
+                    
+                    // 定期定額已執行交易的損益
+                    let executedTransactions = investment.transactions?.filter { $0.isExecuted } ?? []
+                    let regularProfitLoss = executedTransactions.reduce(0.0) { sum, transaction in
+                        sum + Double(transaction.shares) * (currentPrice - transaction.price)
+                    }
+                    
+                    metrics.totalProfitLoss += (normalProfitLoss + regularProfitLoss)
+                } else {
+                    metrics.totalProfitLoss += stock.calculateProfitLoss(currentPrice: currentPrice)
+                }
+                
+                // 獲取昨日價格來計算當日損益（只計算實際持有的股數）
                 if let yesterdayPrice = await stockService.getStockPrice(
                     symbol: stock.symbol,
                     date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                 ) {
                     let dailyPriceChange = currentPrice - yesterdayPrice
-                    metrics.dailyChange += Double(stock.shares) * dailyPriceChange
+                    
+                    // 計算實際持有的總股數（一般持股 + 已執行的定期定額）
+                    let executedShares = stock.shares + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
+                    
+                    metrics.dailyChange += Double(executedShares) * dailyPriceChange
                 }
             }
             
-            // 計算年化股利
-            metrics.totalAnnualDividend += stock.calculateAnnualDividend()
+            // 計算年化股利（基於實際持有股數）
+            let executedShares = stock.shares + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
+            metrics.totalAnnualDividend += Double(executedShares) * stock.dividendPerShare * Double(stock.frequency)
         }
         
         // 計算百分比

@@ -229,14 +229,32 @@ struct RegularInvestmentDetailView: View {
                             .font(.headline)
                             .padding(.bottom, 4)
                         
+                        // 已執行投資金額
+                        let executedAmount = (stock?.regularInvestment?.transactions ?? [])
+                            .filter { $0.isExecuted }
+                            .reduce(0) { $0 + $1.amount }
                         DetailRow(
-                            title: "總投資金額",
-                            value: String(format: "$ %.0f", stock?.regularInvestment?.totalInvestmentAmount ?? 0)
+                            title: "已執行投資",
+                            value: String(format: "$ %.0f", executedAmount)
                         )
+                        
+                        // 預計投資金額（未執行的交易）
+                        let pendingAmount = (stock?.regularInvestment?.transactions ?? [])
+                            .filter { !$0.isExecuted }
+                            .reduce(0) { $0 + $1.amount }
+                        if pendingAmount > 0 {
+                            DetailRow(
+                                title: "預計投資",
+                                value: String(format: "$ %.0f", pendingAmount),
+                                valueColor: .gray
+                            )
+                        }
+                        
                         DetailRow(
                             title: "累計股數",
                             value: "\(stock?.regularInvestment?.totalShares ?? 0) 股"
                         )
+                        
                         if let avgCost = stock?.regularInvestment?.averageCost {
                             DetailRow(
                                 title: "平均成本",
