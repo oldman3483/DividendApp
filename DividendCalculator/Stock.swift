@@ -39,6 +39,7 @@ struct RegularInvestmentTransaction: Codable, Identifiable, Equatable {
 
 // MARK: - 定期定額設定
 struct RegularInvestment: Codable, Equatable {
+    var title: String           // 計劃標題
     var amount: Double           // 每期投資金額
     var frequency: Frequency     // 投資頻率
     var startDate: Date         // 開始日期

@@ -32,6 +32,7 @@ struct AddStockView: View {
     
     // 定期定額相關
     @State private var isRegularInvestment: Bool = false
+    @State private var regularTitle: String = ""
     @State private var regularAmount: String = ""
     @State private var regularFrequency: RegularInvestment.Frequency = .monthly
     @State private var regularStartDate = Date()
@@ -156,6 +157,11 @@ struct AddStockView: View {
                     // 定期定額設定區塊
                     if isRegularInvestment {
                         Section(header: Text("定期定額設定")) {
+                            TextField("計劃名稱", text: $regularTitle)
+                                .autocorrectionDisabled(true)
+                                .textInputAutocapitalization(.never)
+                                .foregroundColor(.white)
+                            
                             TextField("每期投資金額", text: $regularAmount)
                                 .keyboardType(.numberPad)
                             
@@ -176,12 +182,12 @@ struct AddStockView: View {
                             
                             if hasEndDate {
                                 DatePicker("結束日期",
-                                         selection: .init(
+                                           selection: .init(
                                             get: { regularEndDate ?? regularStartDate },
                                             set: { regularEndDate = $0 }
-                                         ),
-                                         in: regularStartDate...,
-                                         displayedComponents: .date)
+                                           ),
+                                           in: regularStartDate...,
+                                           displayedComponents: .date)
                             }
                             
                             TextField("備註", text: $regularNote)
@@ -292,6 +298,15 @@ struct AddStockView: View {
                 errorMessage = "請輸入有效的定期定額金額"
                 return
             }
+            // 計算該股票現有的定期定額計劃數量
+            let existingPlansCount = stocks.filter {
+                $0.regularInvestment != nil &&
+                $0.symbol == initialSymbol &&
+                $0.bankId == selectedBankId
+            }.count
+            
+            // 如果沒有輸入標題，則自動生成
+            let planTitle = regularTitle.isEmpty ? "計劃 \(existingPlansCount + 1)" : regularTitle
             
             // 創建新的定期定額投資股票
             let newStock = Stock(
@@ -305,6 +320,7 @@ struct AddStockView: View {
                 purchasePrice: nil, // 等待計算加權平均價格
                 bankId: selectedBankId,
                 regularInvestment: RegularInvestment(
+                    title: planTitle,
                     amount: regularAmountDouble,
                     frequency: regularFrequency,
                     startDate: regularStartDate,

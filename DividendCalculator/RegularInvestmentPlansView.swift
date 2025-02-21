@@ -95,6 +95,11 @@ struct RegularInvestmentPlanCard: View {
     var body: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 12) {
+                // 標題
+                Text(stock.regularInvestment?.title ?? "")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 4)
                 // 第一行：金額和頻率
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
