@@ -229,60 +229,65 @@ struct BankListView: View {
                 bank.id == stock.bankId
             }
         }
+        // 计算总投资成本、总市值和总报酬
+        var totalInvestment: Double = 0
         
         for stock in bankStocks {
             if let currentPrice = await stockService.getStockPrice(symbol: stock.symbol, date: Date()) {
-                // 計算一般持股價值
-                let normalStockValue = Double(stock.shares) * currentPrice
+                // 一般持股
+                let normalShares = stock.shares
+                let normalStockValue = Double(normalShares) * currentPrice
                 
-                // 計算定期定額已執行的持股價值
-                let regularExecutedValue = stock.regularInvestment.map { investment in
-                    let executedShares = (investment.transactions ?? [])
-                        .filter { $0.isExecuted }
-                        .reduce(0) { $0 + $1.shares }
-                    return Double(executedShares) * currentPrice
-                } ?? 0.0
-                
-                metrics.totalValue += (normalStockValue + regularExecutedValue)
-                
-                // 計算總損益（只計算已執行的交易）
-                if let investment = stock.regularInvestment {
-                    // 一般持股損益
-                    let normalProfitLoss = stock.calculateProfitLoss(currentPrice: currentPrice)
-                    
-                    // 定期定額已執行交易的損益
-                    let executedTransactions = investment.transactions?.filter { $0.isExecuted } ?? []
-                    let regularProfitLoss = executedTransactions.reduce(0.0) { sum, transaction in
-                        sum + Double(transaction.shares) * (currentPrice - transaction.price)
-                    }
-                    
-                    metrics.totalProfitLoss += (normalProfitLoss + regularProfitLoss)
-                } else {
-                    metrics.totalProfitLoss += stock.calculateProfitLoss(currentPrice: currentPrice)
+                var normalInvestment: Double = 0
+                if let purchasePrice = stock.purchasePrice {
+                    normalInvestment = Double(normalShares) * purchasePrice
                 }
                 
-                // 獲取昨日價格來計算當日損益（只計算實際持有的股數）
+                // 定期定额已执行的交易
+                var regularExecutedShares = 0
+                var regularInvestment: Double = 0
+                
+                if let investment = stock.regularInvestment {
+                    let executedTransactions = investment.transactions?.filter { $0.isExecuted } ?? []
+                    
+                    regularExecutedShares = executedTransactions.reduce(0) { $0 + $1.shares }
+                    regularInvestment = executedTransactions.reduce(0.0) { $0 + $1.amount }
+                }
+                
+                let regularExecutedValue = Double(regularExecutedShares) * currentPrice
+                
+                // 累加总市值
+                metrics.totalValue += (normalStockValue + regularExecutedValue)
+                
+                // 累加总投资成本
+                totalInvestment += (normalInvestment + regularInvestment)
+                
+                // 获取昨日价格来计算当日损益
                 if let yesterdayPrice = await stockService.getStockPrice(
                     symbol: stock.symbol,
                     date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                 ) {
                     let dailyPriceChange = currentPrice - yesterdayPrice
+                    let totalShares = normalShares + regularExecutedShares
                     
-                    // 計算實際持有的總股數（一般持股 + 已執行的定期定額）
-                    let executedShares = stock.shares + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
-                    
-                    metrics.dailyChange += Double(executedShares) * dailyPriceChange
+                    metrics.dailyChange += Double(totalShares) * dailyPriceChange
                 }
+                
+                // 计算年化股利
+                let totalShares = normalShares + regularExecutedShares
+                metrics.totalAnnualDividend += Double(totalShares) * stock.dividendPerShare * Double(stock.frequency)
             }
-            
-            // 計算年化股利（基於實際持有股數）
-            let executedShares = stock.shares + (stock.regularInvestment?.transactions?.filter { $0.isExecuted }.reduce(0) { $0 + $1.shares } ?? 0)
-            metrics.totalAnnualDividend += Double(executedShares) * stock.dividendPerShare * Double(stock.frequency)
         }
         
-        // 計算百分比
+        // 计算总投资报酬（总市值 - 总投资成本）
+        metrics.totalProfitLoss = metrics.totalValue - totalInvestment
+        
+        // 计算百分比
+        if totalInvestment > 0 {
+            metrics.totalROI = (metrics.totalProfitLoss / totalInvestment) * 100
+        }
+        
         if metrics.totalValue > 0 {
-            metrics.totalROI = (metrics.totalProfitLoss / metrics.totalValue) * 100
             metrics.dailyChangePercentage = (metrics.dailyChange / metrics.totalValue) * 100
             metrics.dividendYield = (metrics.totalAnnualDividend / metrics.totalValue) * 100
         }

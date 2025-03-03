@@ -25,7 +25,7 @@ struct BankListSummaryView: View {
                 MainMetricCard(
                     title: "總市值",
                     value: formatCurrency(totalValue),
-                    change: formatPercentage(dailyChangePercentage),
+                    change: formatPercentage(totalROI),
                     isPositive: dailyChangePercentage >= 0
                 )
                 
