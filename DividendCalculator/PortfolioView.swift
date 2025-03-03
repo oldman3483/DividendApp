@@ -35,10 +35,11 @@ struct EmptyStateView: View {
 struct PortfolioSummarySection: View {
     let stockCount: Int
     let totalAnnualDividend: Double
+    let totalInvestment: Double
     
     var body: some View {
         Section {
-            VStack {
+            VStack(spacing: 15) {
                 HStack {
                     Text("總持股數")
                         .foregroundColor(.white)
@@ -46,7 +47,13 @@ struct PortfolioSummarySection: View {
                     Text("\(stockCount) 檔")
                         .foregroundColor(.gray)
                 }
-                Spacer()
+                HStack {
+                    Text("總投資成本")
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text("$\(Int(totalInvestment).formattedWithComma)")
+                        .foregroundColor(.gray)
+                }
                 
                 HStack {
                     Text("預估年化股利")
@@ -59,8 +66,8 @@ struct PortfolioSummarySection: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .padding(.top, 20)
-        .padding(.bottom, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 }
 
@@ -168,6 +175,45 @@ struct PortfolioView: View {
             return getNormalStocks().reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
         }
     }
+    private func calculateTotalInvestment() -> Double {
+        switch selectedStockType {
+        case .all:
+            // 計算所有股票的總投資成本
+            return getBankStocks().reduce(0) { sum, stock in
+                // 一般持股投資成本
+                let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
+                
+                // 定期定額投資成本(已執行的交易)
+                let regularCost = stock.regularInvestment?.transactions?
+                    .filter { $0.isExecuted }
+                    .reduce(0) { sum, transaction in
+                        sum + transaction.amount
+                    } ?? 0
+                
+                return sum + normalCost + regularCost
+            }
+        case .regularInvestment:
+            // 計算定期定額股票的總投資成本
+            return getBankStocks()
+                .filter { $0.regularInvestment != nil }
+                .reduce(0) { sum, stock in
+                    let regularCost = stock.regularInvestment?.transactions?
+                        .filter { $0.isExecuted }
+                        .reduce(0) { sum, transaction in
+                            sum + transaction.amount
+                        } ?? 0
+                    return sum + regularCost
+                }
+        case .normal:
+            // 計算一般持股的總投資成本
+            return getBankStocks()
+                .filter { $0.regularInvestment == nil }
+                .reduce(0) { sum, stock in
+                    return sum + (Double(stock.shares) * (stock.purchasePrice ?? 0))
+                }
+        }
+    }
+
     
     private func getStockCount() -> Int {
         switch selectedStockType {
@@ -318,7 +364,8 @@ struct PortfolioView: View {
                     // 總覽區塊
                     PortfolioSummarySection(
                         stockCount: getStockCount(),
-                        totalAnnualDividend: calculateTotalAnnualDividend()
+                        totalAnnualDividend: calculateTotalAnnualDividend(),
+                        totalInvestment: calculateTotalInvestment()
                     )
                     
                     if getRegularInvestments().isEmpty && getNormalStocks().isEmpty {
