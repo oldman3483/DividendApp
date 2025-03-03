@@ -202,49 +202,49 @@ struct PortfolioView: View {
         }
         .background(Color.clear)
     }
-    private func stockListView(stocks: [WeightedStockInfo], isRegularInvestment: Bool) -> some View {
-            ForEach(Array(stocks.enumerated()), id: \.element.id) { index, stockInfo in
-                ZStack {
-                    StockSummaryRow(stockInfo: stockInfo, isEditing: isEditing)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 16)
-                        .background(Color(white: 0.15))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(isEditing ? Color.blue.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 1)
-                        )
-                        .shadow(
-                            color: isEditing ? Color.blue.opacity(0.1) : Color.white.opacity(0.05),
-                            radius: isEditing ? 8 : 4,
-                            x: 0,
-                            y: isEditing ? 4 : 2
-                        )
-                    
-                    if !isEditing {
-                        NavigationLink(
-                            destination: StockDetailView(
-                                stocks: $stocks,
-                                symbol: stockInfo.symbol,
-                                bankId: bankId,
-                                isRegularInvestment: isRegularInvestment
-                            )
-                        ) {
-                            EmptyView()
-                        }
-                        .opacity(0)
-                    }
+    
+    private func createStockRow(stockInfo: WeightedStockInfo, isRegularInvestment: Bool) -> some View {
+        ZStack {
+            StockSummaryRow(stockInfo: stockInfo, isEditing: isEditing)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 16)
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isEditing ? Color.blue.opacity(0.3) : Color.gray.opacity(0.3), lineWidth: 1)
+                )
+                .shadow(
+                    color: isEditing ? Color.blue.opacity(0.1) : Color.white.opacity(0.05),
+                    radius: isEditing ? 8 : 4,
+                    x: 0,
+                    y: isEditing ? 4 : 2
+                )
+            
+            if !isEditing {
+                NavigationLink(
+                    destination: StockDetailView(
+                        stocks: $stocks,
+                        symbol: stockInfo.symbol,
+                        bankId: bankId,
+                        isRegularInvestment: isRegularInvestment
+                    )
+                ) {
+                    EmptyView()
                 }
-                .listRowInsets(EdgeInsets(
-                    top: 4,
-                    leading: isEditing ? 0 : 16,
-                    bottom: 4,
-                    trailing: 16
-                ))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .opacity(0)
             }
         }
+        .listRowInsets(EdgeInsets(
+            top: 4,
+            leading: 0, // 確保左側邊距為0，讓刪除按鈕可見
+            bottom: 4,
+            trailing: 16
+        ))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
 
         // 新增刪除和移動方法
         private func deleteRegularStocks(at offsets: IndexSet) {
@@ -329,18 +329,50 @@ struct PortfolioView: View {
                         case .all:
                             if !getRegularInvestments().isEmpty {
                                 Section(header: Text("定期定額").foregroundColor(.blue)) {
-                                    stockListView(stocks: getRegularInvestments(), isRegularInvestment: true)
+                                    ForEach(Array(getRegularInvestments().enumerated()), id: \.element.id) { index, stockInfo in
+                                        createStockRow(stockInfo: stockInfo, isRegularInvestment: true)
+                                    }
+                                    .onDelete { indexSet in
+                                        deleteRegularStocks(at: indexSet)
+                                    }
+                                    .onMove { from, to in
+                                        moveRegularStocks(from: from, to: to)
+                                    }
                                 }
                             }
                             if !getNormalStocks().isEmpty {
                                 Section(header: Text("一般持股").foregroundColor(.white)) {
-                                    stockListView(stocks: getNormalStocks(), isRegularInvestment: false)
+                                    ForEach(Array(getNormalStocks().enumerated()), id: \.element.id) { index, stockInfo in
+                                        createStockRow(stockInfo: stockInfo, isRegularInvestment: false)
+                                    }
+                                    .onDelete { indexSet in
+                                        deleteNormalStocks(at: indexSet)
+                                    }
+                                    .onMove { from, to in
+                                        moveNormalStocks(from: from, to: to)
+                                    }
                                 }
                             }
                         case .regularInvestment:
-                            stockListView(stocks: getRegularInvestments(), isRegularInvestment: true)
+                            ForEach(Array(getRegularInvestments().enumerated()), id: \.element.id) { index, stockInfo in
+                                createStockRow(stockInfo: stockInfo, isRegularInvestment: true)
+                            }
+                            .onDelete { indexSet in
+                                deleteRegularStocks(at: indexSet)
+                            }
+                            .onMove { from, to in
+                                moveRegularStocks(from: from, to: to)
+                            }
                         case .normal:
-                            stockListView(stocks: getNormalStocks(), isRegularInvestment: false)
+                            ForEach(Array(getNormalStocks().enumerated()), id: \.element.id) { index, stockInfo in
+                                createStockRow(stockInfo: stockInfo, isRegularInvestment: false)
+                            }
+                            .onDelete { indexSet in
+                                deleteNormalStocks(at: indexSet)
+                            }
+                            .onMove { from, to in
+                                moveNormalStocks(from: from, to: to)
+                            }
                         }
                     }
                 }
