@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct BankListSummaryView: View {
+    // 改為接受直接參數而非計算
     let totalValue: Double
     let totalProfitLoss: Double
     let totalROI: Double

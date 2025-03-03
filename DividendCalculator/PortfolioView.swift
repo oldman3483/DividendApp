@@ -390,26 +390,3 @@ struct PortfolioView: View {
     }
 }
     
-//    // 新增通用的刪除和移動方法
-//    private func deleteSelectedStocks(at offsets: IndexSet) {
-//        let stocksToDelete = offsets.map { filteredStocks()[$0] }
-//        stocks.removeAll { stock in
-//            stocksToDelete.contains { $0.symbol == stock.symbol && stock.bankId == bankId }
-//        }
-//    }
-//    
-//    private func moveSelectedStocks(from source: IndexSet, to destination: Int) {
-//        var sortOrder = filteredStocks().map { $0.symbol }
-//        sortOrder.move(fromOffsets: source, toOffset: destination)
-//        
-//        let orderDict = Dictionary(uniqueKeysWithValues: sortOrder.enumerated().map { ($0.element, $0.offset) })
-//        stocks = stocks.sorted { (stock1, stock2) in
-//            guard stock1.bankId == bankId, stock2.bankId == bankId else {
-//                return false
-//            }
-//            let index1 = orderDict[stock1.symbol] ?? 0
-//            let index2 = orderDict[stock2.symbol] ?? 0
-//            return index1 < index2
-//        }
-//    }
-//}

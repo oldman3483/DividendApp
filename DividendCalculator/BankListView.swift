@@ -5,8 +5,6 @@
 //  Created by Heidie Lee on 2025/1/31.
 //
 
-
-
 import SwiftUI
 
 struct BankListView: View {
@@ -42,18 +40,7 @@ struct BankListView: View {
                 
                 VStack(spacing: 0) {
                     // 投資組合總覽
-                    BankListSummaryView(
-                        totalValue: portfolioMetrics.totalValue,
-                        totalProfitLoss: portfolioMetrics.totalProfitLoss,
-                        totalROI: portfolioMetrics.totalROI,
-                        dailyChange: portfolioMetrics.dailyChange,
-                        dailyChangePercentage: portfolioMetrics.dailyChangePercentage,
-                        annualDividend: portfolioMetrics.totalAnnualDividend,
-                        dividendYield: portfolioMetrics.dividendYield
-                    )
-                    .padding(.horizontal, 12)
-                    .padding(.top, 20)
-                    .padding(.bottom, 12)
+                    bankListSummaryView
                     
                     if banks.isEmpty {
                         // 空狀態
@@ -62,29 +49,9 @@ struct BankListView: View {
                         Spacer()
                     } else {
                         // 銀行卡片列表
-                        
-                        List {
-                            ForEach(banks) { bank in
-                                bankCard(for: bank)
-                                    .listRowInsets(EdgeInsets(
-                                        top: 4,
-                                        leading: isEditing ? 0 : 16,
-                                        bottom: 4,
-                                        trailing: 16
-                                    ))
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                            }
-                            .onDelete(perform: deleteBank)
-                            .onMove(perform: moveBanks)
-                        }
-                        .listStyle(PlainListStyle())
-                        .environment(\.editMode, .constant(isEditing ? .active : .inactive))
-                        .padding(.horizontal,0)
-                        .padding(.vertical, 8)
+                        bankListContent
+                    }
                 }
-            }
-                
                 
                 // 新增銀行按鈕
                 AddBankButton(action: { showingAddBank = true })
@@ -135,9 +102,26 @@ struct BankListView: View {
         }
     }
     
+    // MARK: - 子視圖
+    
+    // 投資組合總覽視圖
+    private var bankListSummaryView: some View {
+        BankListSummaryView(
+            totalValue: portfolioMetrics.totalValue,
+            totalProfitLoss: portfolioMetrics.totalProfitLoss,
+            totalROI: portfolioMetrics.totalROI,
+            dailyChange: portfolioMetrics.dailyChange,
+            dailyChangePercentage: portfolioMetrics.dailyChangePercentage,
+            annualDividend: portfolioMetrics.totalAnnualDividend,
+            dividendYield: portfolioMetrics.dividendYield
+        )
+        .padding(.horizontal, 12)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
+    }
+    
     // 空狀態視圖
     private var emptyStateView: some View {
-        
         VStack(spacing: 16) {
             Image(systemName: "building.columns.fill")
                 .font(.system(size: 48))
@@ -151,12 +135,33 @@ struct BankListView: View {
                 .font(.subheadline)
                 .foregroundColor(.gray.opacity(0.8))
         }
-//        .frame(maxWidth: .infinity, maxHeight: .infinity)
-//        .padding(.bottom, 80)
+    }
+    
+    // 銀行列表
+    private var bankListContent: some View {
+        List {
+            ForEach(banks) { bank in
+                bankCardView(for: bank)
+                    .listRowInsets(EdgeInsets(
+                        top: 4,
+                        leading: isEditing ? 0 : 16,
+                        bottom: 4,
+                        trailing: 16
+                    ))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+            .onDelete(perform: deleteBank)
+            .onMove(perform: moveBanks)
+        }
+        .listStyle(PlainListStyle())
+        .environment(\.editMode, .constant(isEditing ? .active : .inactive))
+        .padding(.horizontal, 0)
+        .padding(.vertical, 8)
     }
     
     // 銀行卡片視圖
-    private func bankCard(for bank: Bank) -> some View {
+    private func bankCardView(for bank: Bank) -> some View {
         ZStack {
             // 卡片背景
             RoundedRectangle(cornerRadius: 12)
@@ -165,27 +170,24 @@ struct BankListView: View {
             
             if isEditing {
                 // 編輯模式
-                HStack {
-                    Button(action: {
-                        bankToRename = bank
-                        newBankName = bank.name
-                        showingRenameAlert = true
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "pencil.circle.fill")
-                                .foregroundColor(.blue)
-                                .font(.system(size: 18))
-                            
-                            
-                            Text(bank.name)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                Button(action: {
+                    bankToRename = bank
+                    newBankName = bank.name
+                    showingRenameAlert = true
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "pencil.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 18))
+                        
+                        Text(bank.name)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                        
+                        Spacer()
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
                 }
             } else {
                 // 一般模式
@@ -203,6 +205,7 @@ struct BankListView: View {
                 .padding(.horizontal, 25)
                 .padding(.vertical, 8)
             }
+            
             NavigationLink(
                 destination: PortfolioView(
                     stocks: $stocks,
