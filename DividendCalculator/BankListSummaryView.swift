@@ -26,7 +26,7 @@ struct BankListSummaryView: View {
                     title: "總市值",
                     value: formatCurrency(totalValue),
                     change: formatPercentage(totalROI),
-                    isPositive: dailyChangePercentage >= 0
+                    isPositive: totalROI >= 0
                 )
                 
                 // 總投資報酬

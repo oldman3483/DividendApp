@@ -432,7 +432,6 @@ struct PortfolioView: View {
             })
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(bankName)
@@ -445,17 +444,6 @@ struct PortfolioView: View {
                         withAnimation {
                             isEditing.toggle()
                         }
-                    }
-                }
-            }
-            
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("返回")
                     }
                 }
             }
