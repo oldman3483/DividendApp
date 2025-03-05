@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		48023BB82D7706F4004A6508 /* PostgresClientKit in Frameworks */ = {isa = PBXBuildFile; productRef = 48023BB72D7706F4004A6508 /* PostgresClientKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		48774FE52D3E5C0B005C75AF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				48023BB82D7706F4004A6508 /* PostgresClientKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,12 +77,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		48023BB52D7705E5004A6508 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		48774FCB2D3E5C0A005C75AF = {
 			isa = PBXGroup;
 			children = (
 				48774FD62D3E5C0A005C75AF /* DividendCalculator */,
 				48774FE72D3E5C0B005C75AF /* DividendCalculatorTests */,
 				48774FF12D3E5C0B005C75AF /* DividendCalculatorUITests */,
+				48023BB52D7705E5004A6508 /* Frameworks */,
 				48774FD52D3E5C0A005C75AF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -112,6 +125,7 @@
 			);
 			name = DividendCalculator;
 			packageProductDependencies = (
+				48023BB72D7706F4004A6508 /* PostgresClientKit */,
 			);
 			productName = DividendCalculator;
 			productReference = 48774FD42D3E5C0A005C75AF /* DividendCalculator.app */;
@@ -195,6 +209,9 @@
 			);
 			mainGroup = 48774FCB2D3E5C0A005C75AF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				48023BB62D7706F4004A6508 /* XCRemoteSwiftPackageReference "PostgresClientKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 48774FD52D3E5C0A005C75AF /* Products */;
 			projectDirPath = "";
@@ -558,6 +575,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		48023BB62D7706F4004A6508 /* XCRemoteSwiftPackageReference "PostgresClientKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/codewinsdotcom/PostgresClientKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		48023BB72D7706F4004A6508 /* PostgresClientKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 48023BB62D7706F4004A6508 /* XCRemoteSwiftPackageReference "PostgresClientKit" */;
+			productName = PostgresClientKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 48774FCC2D3E5C0A005C75AF /* Project object */;
 }

@@ -79,13 +79,13 @@ struct BankListView: View {
         .sheet(isPresented: $showingAddBank) {
             AddBankView(banks: $banks)
         }
-        .alert("重新命名銀行", isPresented: $showingRenameAlert) {
-            TextField("銀行名稱", text: $newBankName)
+        .alert("重新命名", isPresented: $showingRenameAlert) {
+            TextField("新名稱", text: $newBankName)
                 .autocorrectionDisabled(true)
             Button("取消", role: .cancel) { resetRenameState() }
             Button("確定") { renameSelectedBank() }
         } message: {
-            Text("請輸入新的銀行名稱")
+            Text("請輸入新的名稱")
         }
         .alert("錯誤", isPresented: $showingErrorAlert) {
             Button("確定", role: .cancel) { }

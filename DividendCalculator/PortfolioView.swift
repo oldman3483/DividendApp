@@ -358,6 +358,7 @@ struct PortfolioView: View {
             VStack(spacing: 0) {
                 // 添加股票類型選擇器
                 stockTypeSelector
+                    .padding(.top, 20)
                     .padding(.bottom, 10)
                 
                 List {
