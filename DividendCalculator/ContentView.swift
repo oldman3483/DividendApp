@@ -83,6 +83,18 @@ struct ContentView: View {
         }
         .onAppear {
             setupInitialState()
+            // 添加清除數據的通知觀察者
+            NotificationCenter.default.addObserver(
+                forName: Notification.Name("ClearAllData"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                self.resetAllData()
+            }
+        }
+        .onDisappear {
+            // 移除觀察者
+            NotificationCenter.default.removeObserver(self)
         }
         .onChange(of: stocks) { oldValue, newValue in saveData() }
         .onChange(of: watchlist) { oldValue, newValue in saveData() }
@@ -165,7 +177,24 @@ struct ContentView: View {
         // 將登出訊息顯示在主控台（可選）
         print("使用者已登出")
     }
-    
+    // 重置所有數據
+    private func resetAllData() {
+        // 清空所有數據狀態
+        stocks = []
+        watchlist = []
+        banks = []
+        searchText = ""
+        
+        // 創建一個新的預設銀行
+        let defaultBank = Bank(name: "預設銀行")
+        banks = [defaultBank]
+        selectedBankId = defaultBank.id
+        
+        // 儲存清空後的狀態
+        saveData()
+        
+        print("所有數據已重置")
+    }
     // 從 API 載入資料
     private func loadDataFromAPI() async {
         // 在實際情況中，你需要實現以下 API 端點：

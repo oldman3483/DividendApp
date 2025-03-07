@@ -118,14 +118,22 @@ struct SettingsView: View {
     }
     
     private func clearAllData() {
-            if let bundleID = Bundle.main.bundleIdentifier {
-                UserDefaults.standard.removePersistentDomain(forName: bundleID)
-                // 重置通知設定
-                dividendNotification = true
-                priceNotification = true
-            }
+        if let bundleID = Bundle.main.bundleIdentifier {
+            // 清除 UserDefaults 數據
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+            
+            // 重置通知設定
+            dividendNotification = true
+            priceNotification = true
+            
+            // 登出用戶
+            isLoggedIn = false
+            
+            // 發送通知以通知 ContentView 重置所有數據
+            NotificationCenter.default.post(name: Notification.Name("ClearAllData"), object: nil)
         }
     }
+}
 
 #Preview {
     SettingsView()

@@ -280,6 +280,13 @@ struct AddStockView: View {
     
     private func addToBank() {
         
+        print("開始新增股票")
+        print("傳入的銀行ID: \(bankId)")
+        print("選擇的銀行ID: \(selectedBankId)")
+        
+        // 確保銀行ID一致
+        let finalBankId = isFromBankPortfolio ? bankId : selectedBankId
+        
         if banks.isEmpty {
             let defaultBank = Bank(name: "預設銀行")
             banks.append(defaultBank)
@@ -318,7 +325,7 @@ struct AddStockView: View {
                 frequency: frequency ?? 1,
                 purchaseDate: regularStartDate,
                 purchasePrice: nil, // 等待計算加權平均價格
-                bankId: selectedBankId,
+                bankId: finalBankId,
                 regularInvestment: RegularInvestment(
                     title: planTitle,
                     amount: regularAmountDouble,
@@ -372,10 +379,11 @@ struct AddStockView: View {
                 frequency: frequency ?? 1,
                 purchaseDate: purchaseDate,
                 purchasePrice: priceDouble,
-                bankId: selectedBankId
+                bankId: finalBankId
             )
             
             stocks.append(newStock)
+            print("股票已添加，新ID為: \(newStock.id), 銀行ID: \(newStock.bankId)")
             dismiss()
         }
     }
