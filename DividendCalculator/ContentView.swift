@@ -3,6 +3,7 @@
 //  DividendCalculator
 //
 //  Created by Heidie Lee on 2025/1/20.
+//  Updated on 2025/3/6 with API integration
 //
 
 import SwiftUI
@@ -21,7 +22,11 @@ struct ContentView: View {
     @State private var errorMessage: String? = nil
     @State private var showingErrorAlert = false
     
+    // API 相關狀態
+    @State private var isOnlineMode = true // 是否使用在線數據模式
+    
     let stockService = LocalStockService() // 保留本地服務用於模擬價格變動
+    let repository = StockRepository.shared // 添加 repository 用於 API 數據
     
     // MARK: - 視圖
     var body: some View {
@@ -95,42 +100,28 @@ struct ContentView: View {
         
         // 使用 Task 來進行非同步加載
         Task {
-            do {
-                isLoading = true
-                
-                // 測試資料庫連接
-                let isConnected = try await PostgresService.shared.testConnection()
-                if !isConnected {
-                    errorMessage = "無法連接到資料庫，請檢查網絡連接"
-                    showingErrorAlert = true
-                    isLoading = false
-                    return
-                }
-                
-                // 從資料庫獲取資料
-                await loadDataFromDatabase()
-                
-                // 在獲取完成後更新 UI
-                if let firstBank = banks.first {
-                    selectedBankId = firstBank.id
-                }
-                
-                isLoading = false
-            } catch {
-                // 如果無法連接到資料庫，嘗試從本地加載
-                print("資料庫連接錯誤: \(error.localizedDescription)")
-                errorMessage = "資料庫連接失敗: \(error.localizedDescription)\n正在嘗試加載本地資料..."
-                showingErrorAlert = true
-                
+            isLoading = true
+            
+            if isOnlineMode {
+                // 嘗試從 API 加載數據
+                await loadDataFromAPI()
+            } else {
                 // 從本地緩存加載資料
                 loadLocalData()
-                
-                if let firstBank = banks.first {
-                    selectedBankId = firstBank.id
-                }
-                
-                isLoading = false
             }
+            
+            // 在獲取完成後確保有銀行
+            if banks.isEmpty {
+                // 如果沒有銀行資料，創建一個預設銀行
+                let defaultBank = Bank(name: "預設銀行")
+                banks = [defaultBank]
+            }
+            
+            if let firstBank = banks.first {
+                selectedBankId = firstBank.id
+            }
+            
+            isLoading = false
         }
     }
     
@@ -175,32 +166,43 @@ struct ContentView: View {
         print("使用者已登出")
     }
     
-    // 從資料庫載入資料
-    private func loadDataFromDatabase() async {
-        do {
-            // 從資料庫加載銀行列表
-            let fetchedBanks = try await PostgresService.shared.fetchBanks()
-            
-            // 從資料庫加載股票列表
-            let fetchedStocks = try await PostgresService.shared.fetchStocks()
-            
-            // 從資料庫加載觀察清單
-            let fetchedWatchlist = try await PostgresService.shared.fetchWatchlist()
-            
-            // 使用 MainActor 更新 UI
-            await MainActor.run {
-                self.banks = fetchedBanks
-                self.stocks = fetchedStocks
-                self.watchlist = fetchedWatchlist
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = "資料庫載入失敗: \(error.localizedDescription)"
-                showingErrorAlert = true
-                print("資料庫載入錯誤: \(error)")
+    // 從 API 載入資料
+    private func loadDataFromAPI() async {
+        // 在實際情況中，你需要實現以下 API 端點：
+        // 1. 獲取用戶的銀行列表
+        // 2. 獲取用戶的股票列表
+        // 3. 獲取用戶的觀察清單
+        
+        // 由於目前沒有這些 API 端點，我們先載入本地資料
+        loadLocalData()
+        
+        // 然後，我們可以嘗試更新股票的實時數據
+        await updateStocksWithLiveData()
+        
+    }
+    
+    // 更新股票實時數據
+    private func updateStocksWithLiveData() async {
+        // 獲取所有不重複的股票代碼
+        let uniqueSymbols = Array(Set(stocks.map { $0.symbol }))
+        
+        for symbol in uniqueSymbols {
+            do {
+                // 獲取股票信息
+                let stockInfo = try await StockAPIService.shared.getStockInfo(symbol: symbol)
                 
-                // 加載失敗時，載入本地資料
-                loadLocalData()
+                // 更新相關股票的當前價格和股息信息
+                await MainActor.run {
+                    // 使用 enumerated 獲取索引，以便可以直接修改 stocks 數組
+                    for i in 0..<stocks.count where stocks[i].symbol == symbol {
+                        stocks[i].dividendPerShare = stockInfo.dividendPerShare
+                        // 其他可能的更新...
+                    }
+                }
+            } catch {
+                print("更新實時數據失敗，股票: \(symbol), 錯誤: \(error.localizedDescription)")
+                // 出錯時繼續下一個股票，不中斷整個流程
+                continue
             }
         }
     }
@@ -243,31 +245,9 @@ struct ContentView: View {
         if let encodedBanks = try? JSONEncoder().encode(banks) {
             UserDefaults.standard.set(encodedBanks, forKey: "banks")
         }
-        
-        // 同步到資料庫（如果需要）
-        Task {
-            do {
-                // 實際項目中，您可能想要執行批次更新，或只更新已變更的資料
-                for bank in banks {
-                    try await PostgresService.shared.updateBank(bank)
-                }
-                
-                for stock in stocks {
-                    try await PostgresService.shared.updateStock(stock)
-                }
-                
-                // 更新觀察清單可能需要更複雜的邏輯，這裡只是示例
-                // 實際中可能需要比較舊值和新值，執行增刪改操作
-            } catch {
-                print("資料庫同步失敗: \(error.localizedDescription)")
-                // 在主線程顯示錯誤（如果需要）
-                await MainActor.run {
-                    errorMessage = "資料庫同步失敗，但已儲存到本地: \(error.localizedDescription)"
-                    showingErrorAlert = true
-                }
-            }
-        }
     }
 }
-        
-    
+
+#Preview {
+    ContentView()
+}
