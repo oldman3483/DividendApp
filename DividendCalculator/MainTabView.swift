@@ -47,7 +47,7 @@ struct MainTabView: View {
             }
             // Tab 4: 最新資訊
             NavigationStack {
-                NewsView()
+                NewsView(stocks: $stocks)
             }
             .padding(.top, 40)
             .tabItem {
