@@ -11,20 +11,11 @@ import Charts
 struct RiskTabView: View {
     @Binding var metrics: InvestmentMetrics
     @Binding var isLoading: Bool
-    @State private var selectedRiskPeriod: String = "1年"
+    @Binding var selectedTimeRange: String
     
-    private let riskPeriods = ["1年", "3年", "5年"]
     
     var body: some View {
         VStack(spacing: 20) {
-            // 風險時間段選擇器
-            Picker("風險分析期間", selection: $selectedRiskPeriod) {
-                ForEach(riskPeriods, id: \.self) { period in
-                    Text(period).tag(period)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
             
             ScrollView {
                 VStack(spacing: 20) {
@@ -191,6 +182,10 @@ struct RiskTabView: View {
                 }
                 .padding(.horizontal)
             }
+        }
+        .onChange(of: selectedTimeRange) { _, newPeriod in
+            // 根據選擇的期間更新風險指標
+            updateRiskMetricsForPeriod(newPeriod)
         }
     }
     
@@ -382,6 +377,38 @@ struct RiskTabView: View {
     }
     
     // MARK: - 輔助計算方法
+    
+    // 根據選擇的期間更新風險指標（模擬）
+    private func updateRiskMetricsForPeriod(_ period: String) {
+        // 在實際應用中，這裡應該重新計算不同時間窗口的風險指標
+        // 這裡只是模擬根據期間變化風險指標的值
+        Task {
+            isLoading = true
+            
+            // 模擬數據變更
+            await MainActor.run {
+                // 根據選擇的期間調整風險指標
+                switch period {
+                case "1年":
+                    metrics.riskMetrics.portfolioVolatility = Double.random(in: 10...15)
+                    metrics.riskMetrics.betaValue = Double.random(in: 0.9...1.1)
+                    metrics.riskMetrics.maxDrawdown = Double.random(in: 5...10)
+                case "3年":
+                    metrics.riskMetrics.portfolioVolatility = Double.random(in: 12...18)
+                    metrics.riskMetrics.betaValue = Double.random(in: 0.8...1.2)
+                    metrics.riskMetrics.maxDrawdown = Double.random(in: 8...15)
+                case "5年":
+                    metrics.riskMetrics.portfolioVolatility = Double.random(in: 15...22)
+                    metrics.riskMetrics.betaValue = Double.random(in: 0.7...1.3)
+                    metrics.riskMetrics.maxDrawdown = Double.random(in: 10...20)
+                default:
+                    break
+                }
+                
+                isLoading = false
+            }
+        }
+    }
     
     // 生成風險vs報酬數據（模擬數據）
     private struct RiskReturnDataPoint: Identifiable {

@@ -88,3 +88,9 @@ func formatDate(_ date: Date?) -> String {
     formatter.dateFormat = "yyyy/MM/dd"
     return formatter.string(from: date)
 }
+
+func monthName(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MM月"
+    return formatter.string(from: date)
+}

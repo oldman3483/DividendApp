@@ -11,16 +11,74 @@ import Charts
 
 struct InvestmentOverviewView: View {
     @Binding var stocks: [Stock]
-    @State private var selectedTimeRange = "1Y"
+    @State private var selectedTimeRange = "1季"
     @State private var selectedAnalysisType = "amount"
     @State private var selectedViewMode = "overview"
     @State private var isLoading = false
     @State private var investmentMetrics = InvestmentMetrics()
+    @State private var showCustomDatePicker = false
+    @State private var startDate = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+    @State private var endDate = Date()
+    @State private var isCustomRangeActive = false
+    @State private var metricsService: CustomRangeMetricsService?
     
-    private let timeRanges = ["1Y", "3Y", "5Y"]
+    private let timeRanges = ["1季", "1年", "3年", "5年", "自訂"]
     private let analysisTypes = ["amount", "yield"]
     private let viewModes = ["overview", "allocation", "monthly", "growth", "risk"]
     private let stockService = LocalStockService()
+    
+    // 在 InvestmentOverviewView 結構體中添加這個計算屬性
+    private var selectedContentView: some View {
+        Group {
+            switch selectedViewMode {
+            case "overview":
+                OverviewTabView(
+                    stocks: $stocks,
+                    metrics: $investmentMetrics,
+                    selectedTimeRange: $selectedTimeRange,
+                    selectedAnalysisType: $selectedAnalysisType,
+                    timeRanges: timeRanges,
+                    stockService: stockService
+                )
+                
+            case "allocation":
+                AllocationTabView(
+                    metrics: $investmentMetrics,
+                    isLoading: $isLoading
+                )
+                
+            case "monthly":
+                MonthlyTabView(
+                    metrics: $investmentMetrics,
+                    isLoading: $isLoading
+                )
+                
+            case "growth":
+                GrowthTabView(
+                    metrics: $investmentMetrics,
+                    isLoading: $isLoading
+                )
+                
+            case "risk":
+                RiskTabView(
+                    metrics: $investmentMetrics,
+                    isLoading: $isLoading,
+                    selectedTimeRange: $selectedTimeRange
+                )
+                
+            default:
+                // 處理意外狀況，預設顯示概覽視圖
+                OverviewTabView(
+                    stocks: $stocks,
+                    metrics: $investmentMetrics,
+                    selectedTimeRange: $selectedTimeRange,
+                    selectedAnalysisType: $selectedAnalysisType,
+                    timeRanges: timeRanges,
+                    stockService: stockService
+                )
+            }
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -32,50 +90,22 @@ struct InvestmentOverviewView: View {
                     // 時間區間選擇器
                     if selectedViewMode != "allocation" {
                         timeRangeSelector
+                        
+                        // 顯示自定義日期範圍
+                        if isCustomRangeActive {
+                            CustomDateRangeBadgeView(
+                                startDate: startDate,
+                                endDate: endDate,
+                                onTap: {
+                                    showCustomDatePicker = true
+                                }
+                            )
+                            .padding(.top, 4)
+                        }
                     }
                     
                     // 基於選擇的視圖模式顯示內容
-                    switch selectedViewMode {
-                    case "overview":
-                        OverviewTabView(
-                            stocks: $stocks,
-                            metrics: $investmentMetrics,
-                            selectedTimeRange: $selectedTimeRange,
-                            selectedAnalysisType: $selectedAnalysisType,
-                            timeRanges: timeRanges,
-                            stockService: stockService
-                        )
-                    case "allocation":
-                        AllocationTabView(
-                            metrics: $investmentMetrics,
-                            isLoading: $isLoading
-                        )
-                    case "monthly":
-                        MonthlyTabView(
-                            metrics: $investmentMetrics,
-                            isLoading: $isLoading
-                        )
-                    case "growth":
-                        GrowthTabView(
-                            metrics: $investmentMetrics,
-                            isLoading: $isLoading
-                        )
-                    case "risk":
-                        RiskTabView(
-                            metrics: $investmentMetrics,
-                            isLoading: $isLoading
-                        )
-                    default:
-                        // 處理意外狀況，預設顯示概覽視圖
-                        OverviewTabView(
-                            stocks: $stocks,
-                            metrics: $investmentMetrics,
-                            selectedTimeRange: $selectedTimeRange,
-                            selectedAnalysisType: $selectedAnalysisType,
-                            timeRanges: timeRanges,
-                            stockService: stockService
-                        )
-                    }
+                    selectedContentView
                 }
                 .padding(.top, 20)
             }
@@ -89,11 +119,21 @@ struct InvestmentOverviewView: View {
             }
         }
         .task {
-            await calculateInvestmentMetrics()
-        }
-        .onChange(of: selectedTimeRange) { _, _ in
-            Task {
+            metricsService = CustomRangeMetricsService(stocks: stocks, stockService: stockService)
+                // 初始時設置合適的時間範圍
+                updateDateRangeForSelection(selectedTimeRange)
                 await calculateInvestmentMetrics()
+        }
+        .onChange(of: selectedTimeRange) { _, newRange in
+            if newRange == "自訂" {
+                showCustomDatePicker = true
+            } else {
+                isCustomRangeActive = false
+                // 根據選擇的時間範圍設置起始日期
+                updateDateRangeForSelection(newRange)
+                Task {
+                    await calculateInvestmentMetrics()
+                }
             }
         }
         .onChange(of: selectedViewMode) { _, newMode in
@@ -108,6 +148,27 @@ struct InvestmentOverviewView: View {
                     .background(Color.black.opacity(0.7))
                     .cornerRadius(10)
             }
+        }
+        .sheet(isPresented: $showCustomDatePicker) {
+            CustomDateRangeView(
+                startDate: $startDate,
+                endDate: $endDate,
+                isVisible: $showCustomDatePicker,
+                onConfirm: {
+                    isCustomRangeActive = true
+                    showCustomDatePicker = false
+                    // 重新計算指標
+                    Task {
+                        await calculateInvestmentMetricsForCustomRange()
+                    }
+                },
+                onCancel: {
+                    if !isCustomRangeActive {
+                        selectedTimeRange = "1季" // 如果之前沒有啟用自定義，則回到預設值
+                    }
+                    showCustomDatePicker = false
+                }
+            )
         }
     }
     
@@ -142,21 +203,50 @@ struct InvestmentOverviewView: View {
     }
     
     private var timeRangeSelector: some View {
-        HStack(spacing: 15) {
+        Picker("時間範圍", selection: $selectedTimeRange) {
             ForEach(timeRanges, id: \.self) { range in
-                Button(action: {
-                    selectedTimeRange = range
-                }) {
-                    Text(range)
-                        .padding(.horizontal, 15)
-                        .padding(.vertical, 8)
-                        .background(selectedTimeRange == range ? Color.blue : Color.gray.opacity(0.2))
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                }
+                Text(range).tag(range)
             }
         }
+        .pickerStyle(SegmentedPickerStyle())
         .padding(.horizontal)
+    }
+    // 添加更新日期範圍的方法
+    private func updateDateRangeForSelection(_ selection: String) {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        switch selection {
+        case "1季":
+            startDate = calendar.date(byAdding: .month, value: -3, to: now) ?? now
+            endDate = now
+        case "1年":
+            startDate = calendar.date(byAdding: .year, value: -1, to: now) ?? now
+            endDate = now
+        case "3年":
+            startDate = calendar.date(byAdding: .year, value: -3, to: now) ?? now
+            endDate = now
+        case "5年":
+            startDate = calendar.date(byAdding: .year, value: -5, to: now) ?? now
+            endDate = now
+        default:
+            break
+        }
+    }
+
+    // 添加自定義範圍計算方法
+    private func calculateInvestmentMetricsForCustomRange() async {
+        guard let service = metricsService else { return }
+        
+        isLoading = true
+        
+        // 使用服務計算指標
+        let metrics = await service.calculateMetrics(startDate: startDate, endDate: endDate)
+        
+        await MainActor.run {
+            self.investmentMetrics = metrics
+            self.isLoading = false
+        }
     }
     
     private func modeButton(icon: String, text: String, isSelected: Bool) -> some View {
@@ -176,37 +266,7 @@ struct InvestmentOverviewView: View {
     
     // 計算基本投資指標
     private func calculateInvestmentMetrics() async {
-        isLoading = true
-        var metrics = InvestmentMetrics()
-        
-        // 計算總投資成本（包含一般持股和定期定額）
-        metrics.totalInvestment = calculateTotalInvestment()
-        
-        // 計算年化股利
-        metrics.annualDividend = calculateTotalAnnualDividend()
-        
-        // 計算平均殖利率
-        metrics.averageYield = metrics.totalInvestment > 0 ? (metrics.annualDividend / metrics.totalInvestment) * 100 : 0
-        
-        // 計算持股數量（不同的股票代號）
-        metrics.stockCount = Set(stocks.map { $0.symbol }).count
-        
-        // 計算趨勢數據
-        metrics.trendData = await calculateTrendData()
-        
-        // 獲取績效排行
-        metrics.topPerformingStocks = getTopPerformingStocks()
-        
-        // 獲取即將到來的股利資訊
-        metrics.upcomingDividends = await getUpcomingDividends()
-        
-        // 計算績效指標
-        metrics.performanceMetrics = await calculatePerformanceMetrics()
-        
-        await MainActor.run {
-            self.investmentMetrics = metrics
-            self.isLoading = false
-        }
+        await calculateInvestmentMetricsForCustomRange()
     }
     
     // 根據選擇的視圖模式加載特定指標
@@ -680,6 +740,8 @@ struct InvestmentOverviewView: View {
     }
     
     // 計算股息成長分析
+    // 修改 InvestmentOverviewView.swift 中的 calculateDividendGrowth 方法
+
     private func calculateDividendGrowth() async {
         isLoading = true
         
@@ -707,22 +769,31 @@ struct InvestmentOverviewView: View {
             yearlyDividends[year] = baseDividend * randomFactor
         }
         
-        // 計算年度成長率
-        for year in (startYear + 1)...currentYear {
-            let currentYearDividend = yearlyDividends[year] ?? 0
-            let previousYearDividend = yearlyDividends[year - 1] ?? 0
-            
-            var growthRate: Double
-            if previousYearDividend > 0 {
-                growthRate = ((currentYearDividend / previousYearDividend) - 1) * 100
-            } else {
-                growthRate = -100 // 表示無法計算
+        // 計算年度成長率，確保 startYear < currentYear
+        if startYear < currentYear {
+            for year in (startYear + 1)...currentYear {
+                let currentYearDividend = yearlyDividends[year] ?? 0
+                let previousYearDividend = yearlyDividends[year - 1] ?? 0
+                
+                var growthRate: Double
+                if previousYearDividend > 0 {
+                    growthRate = ((currentYearDividend / previousYearDividend) - 1) * 100
+                } else {
+                    growthRate = -100 // 表示無法計算
+                }
+                
+                dividendGrowth.append(DividendGrowth(
+                    year: year,
+                    annualDividend: currentYearDividend,
+                    growthRate: growthRate
+                ))
             }
-            
+        } else {
+            // 如果沒有足夠的年份範圍，至少添加當前年份的數據
             dividendGrowth.append(DividendGrowth(
-                year: year,
-                annualDividend: currentYearDividend,
-                growthRate: growthRate
+                year: currentYear,
+                annualDividend: yearlyDividends[currentYear] ?? 0,
+                growthRate: 0 // 無法計算成長率
             ))
         }
         
