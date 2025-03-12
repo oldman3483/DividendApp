@@ -40,27 +40,7 @@ class DataMapper {
         )
     }
     
-    /// 將 API 的歷史價格數據轉換為 App 中的 KLineData 模型
-    static func mapToKLineData(from priceHistory: [StockPriceHistory]) -> [KLineData] {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        
-        return priceHistory.compactMap { history in
-            guard let date = dateFormatter.date(from: history.date) else {
-                return nil
-            }
-            
-            return KLineData(
-                date: date,
-                open: history.open,
-                high: history.high,
-                low: history.low,
-                close: history.close,
-                volume: history.volume
-            )
-        }
-    }
-    
+  
     /// 將 API 的股利歷史數據轉換為自定義 DividendData 模型
     static func mapToDividendData(from dividendHistory: [DividendHistory]) -> [DividendData] {
         let dateFormatter = DateFormatter()

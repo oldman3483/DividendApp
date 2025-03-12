@@ -75,29 +75,6 @@ class StockRepository {
         }
     }
     
-    /// 獲取股票價格歷史 (K線圖數據)
-    func getStockPriceHistory(symbol: String, days: Int) async -> [KLineData] {
-        let calendar = Calendar.current
-        let endDate = Date()
-        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
-            return []
-        }
-        
-        // 嘗試從 API 獲取
-        do {
-            let historyData = try await apiService.getStockPriceHistory(symbol: symbol, startDate: startDate, endDate: endDate)
-            
-            // 更新緩存
-            priceHistoryCache[symbol] = historyData
-            
-            return DataMapper.mapToKLineData(from: historyData)
-        } catch {
-            print("API 獲取股價歷史失敗，使用模擬數據: \(error.localizedDescription)")
-            
-            // 備用使用模擬數據生成 K 線圖
-            return await generateSimulatedKLineData(symbol: symbol, days: days)
-        }
-    }
     
     /// 獲取股利歷史
     func getDividendHistory(symbol: String, years: Int = 3) async -> [DividendData] {
@@ -164,40 +141,7 @@ class StockRepository {
     
     // MARK: - 私有輔助方法
     
-    /// 生成模擬的 K 線數據
-    private func generateSimulatedKLineData(symbol: String, days: Int) async -> [KLineData] {
-        var kLineData: [KLineData] = []
-        
-        // 獲取基準價格
-        let basePrice = await localService.getStockPrice(symbol: symbol, date: Date()) ?? 100.0
-        
-        let calendar = Calendar.current
-        let today = Date()
-        
-        for day in 0..<days {
-            guard let date = calendar.date(byAdding: .day, value: -day, to: today) else { continue }
-            
-            // 模擬每日波動
-            let dailyVolatility = Double.random(in: -0.05...0.05)
-            let open = basePrice * (1 + Double.random(in: -0.03...0.03))
-            let close = open * (1 + dailyVolatility)
-            let high = max(open, close) * (1 + Double.random(in: 0.005...0.02))
-            let low = min(open, close) * (1 - Double.random(in: 0.005...0.02))
-            let volume = Int.random(in: 100000...5000000)
-            
-            kLineData.append(KLineData(
-                date: date,
-                open: open,
-                high: high,
-                low: low,
-                close: close,
-                volume: volume
-            ))
-        }
-        
-        return kLineData.sorted(by: { $0.date < $1.date })
-    }
-    
+   
     /// 生成模擬的股利歷史數據
     private func generateSimulatedDividendHistory(symbol: String, years: Int) async -> [DividendData] {
         var dividendHistory: [DividendData] = []

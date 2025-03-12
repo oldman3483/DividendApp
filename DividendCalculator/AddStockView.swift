@@ -226,9 +226,9 @@ struct AddStockView: View {
             .navigationTitle("新增股票")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") { dismiss() }
-                }
+//                ToolbarItem(placement: .navigationBarLeading) {
+//                    Button("取消") { dismiss() }
+//                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("新增") {
                         addStock()

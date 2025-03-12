@@ -17,9 +17,7 @@ struct SearchResultView: View {
     @State private var searchResults: [SearchStock] = []
     @State private var isLoading: Bool = false
     @State private var errorMessage: String?
-//    @State private var showingAddStockView = false
-//    @State private var selectedSymbol: String = ""
-//    @State private var selectedName: String = ""
+
     
     let searchText: String
     let bankId: UUID?
@@ -37,14 +35,14 @@ struct SearchResultView: View {
                 } else {
                     List {
                         ForEach(searchResults, id: \.symbol) { stock in
-                            NavigationLink(destination: StockDetailPage(
-                                symbol: stock.symbol,
-                                name: stock.name,
+                            NavigationLink(destination: AddStockView(
                                 stocks: $stocks,
                                 watchlist: $watchlist,
                                 banks: $banks,
-                                bankId: bankId
-                            
+                                initialSymbol: stock.symbol,
+                                initialName: stock.name,
+                                bankId: bankId ?? banks.first?.id ?? UUID(),
+                                isFromBankPortfolio: false
                             )) {
                                 VStack(alignment: .leading) {
                                     Text(stock.symbol)

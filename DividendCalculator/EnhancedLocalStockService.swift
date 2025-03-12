@@ -51,10 +51,6 @@ class EnhancedLocalStockService {
         return await repository.getStockPrice(symbol: symbol, date: date)
     }
     
-    /// 獲取 K 線圖數據
-    func getKLineData(symbol: String, days: Int) async -> [KLineData] {
-        return await repository.getStockPriceHistory(symbol: symbol, days: days)
-    }
     
     /// 獲取股利歷史
     func getDividendHistory(symbol: String, years: Int = 3) async -> [DividendData] {
