@@ -151,7 +151,7 @@ struct BankListView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             }
-            .onDelete(perform: deleteBank)
+            .onDelete(perform: isEditing ? deleteBank : nil)
             .onMove(perform: moveBanks)
         }
         .listStyle(PlainListStyle())

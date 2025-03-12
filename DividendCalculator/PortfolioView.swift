@@ -380,9 +380,7 @@ struct PortfolioView: View {
                                     ForEach(Array(getRegularInvestments().enumerated()), id: \.element.id) { index, stockInfo in
                                         createStockRow(stockInfo: stockInfo, isRegularInvestment: true)
                                     }
-                                    .onDelete { indexSet in
-                                        deleteRegularStocks(at: indexSet)
-                                    }
+                                    .onDelete(perform: isEditing ? deleteRegularStocks : nil)
                                     .onMove { from, to in
                                         moveRegularStocks(from: from, to: to)
                                     }
@@ -393,9 +391,7 @@ struct PortfolioView: View {
                                     ForEach(Array(getNormalStocks().enumerated()), id: \.element.id) { index, stockInfo in
                                         createStockRow(stockInfo: stockInfo, isRegularInvestment: false)
                                     }
-                                    .onDelete { indexSet in
-                                        deleteNormalStocks(at: indexSet)
-                                    }
+                                    .onDelete(perform: isEditing ? deleteNormalStocks : nil)
                                     .onMove { from, to in
                                         moveNormalStocks(from: from, to: to)
                                     }
@@ -405,9 +401,8 @@ struct PortfolioView: View {
                             ForEach(Array(getRegularInvestments().enumerated()), id: \.element.id) { index, stockInfo in
                                 createStockRow(stockInfo: stockInfo, isRegularInvestment: true)
                             }
-                            .onDelete { indexSet in
-                                deleteRegularStocks(at: indexSet)
-                            }
+                            .onDelete(perform: isEditing ? deleteRegularStocks : nil)
+                            
                             .onMove { from, to in
                                 moveRegularStocks(from: from, to: to)
                             }
@@ -415,9 +410,7 @@ struct PortfolioView: View {
                             ForEach(Array(getNormalStocks().enumerated()), id: \.element.id) { index, stockInfo in
                                 createStockRow(stockInfo: stockInfo, isRegularInvestment: false)
                             }
-                            .onDelete { indexSet in
-                                deleteNormalStocks(at: indexSet)
-                            }
+                            .onDelete(perform: isEditing ? deleteNormalStocks : nil)
                             .onMove { from, to in
                                 moveNormalStocks(from: from, to: to)
                             }

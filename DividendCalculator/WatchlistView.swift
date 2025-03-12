@@ -59,9 +59,7 @@ struct WatchlistView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                     }
-                    .onDelete { indexSet in
-                        deleteStocks(at: indexSet)
-                    }
+                    .onDelete (perform: isEditing ? deleteStocks : nil)
                     .onMove { from, to in
                         moveStocks(from: from, to: to)
                     }
