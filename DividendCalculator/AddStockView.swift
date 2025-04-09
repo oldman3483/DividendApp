@@ -241,17 +241,7 @@ struct AddStockView: View {
             await loadStockData()
         }
     }
-    
-    private func getFrequencyText(_ frequency: Int) -> String {
-        switch frequency {
-        case 1: return "年配"
-        case 2: return "半年配"
-        case 4: return "季配"
-        case 12: return "月配"
-        default: return "未知"
-        }
-    }
-    
+
     private func loadStockData() async {
         if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
             dividendPerShare = String(format: "%.2f", dividend)

@@ -262,12 +262,7 @@ struct RegularInvestmentPlanCard: View {
         }
         .groupBoxStyle(TransparentGroupBox())
         .foregroundColor(.white)
-        .background(Color(white: 0.15))
-        .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-        )
+        .cardBackground()
         // 點擊時的反饋效果
         .contentShape(Rectangle())
         .buttonStyle(PlainButtonStyle())

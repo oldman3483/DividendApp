@@ -286,12 +286,8 @@ struct CustomDateRangeView: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .background(Color(white: 0.15))
-        .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-        )
+        .cardBackground()
+        
     }
     
     // 選擇快速時間範圍
@@ -372,12 +368,8 @@ struct CustomDateRangeBadgeView: View {
                 }
             }
             .padding(10)
-            .background(Color(white: 0.15))
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(Color.blue.opacity(0.3), lineWidth: 1)
-            )
+            .cardBackground()
+            
         }
         .buttonStyle(PlainButtonStyle())
         .padding(.horizontal)

@@ -373,17 +373,6 @@ struct RegularInvestmentDetailView: View {
     }
 }
 
-// MARK: - 輔助方法
-func getFrequencyText(_ frequency: Int) -> String {
-    switch frequency {
-    case 1: return "年配"
-    case 2: return "半年配"
-    case 4: return "季配"
-    case 12: return "月配"
-    default: return "未知"
-    }
-}
-
 // MARK: - Stock 擴展
 extension Stock {
     func calculateDividendYield() -> Double? {

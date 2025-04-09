@@ -202,12 +202,6 @@ struct RegularInvestmentCard: View {
             .padding(.vertical, 8)
         )
     }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd"
-        return formatter.string(from: date)
-    }
 }
 
 struct NormalStockCard: View {
@@ -234,11 +228,5 @@ struct NormalStockCard: View {
             }
         }
         .padding(.vertical, 8)
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd"
-        return formatter.string(from: date)
     }
 }

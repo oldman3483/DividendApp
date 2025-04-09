@@ -314,11 +314,4 @@ struct OverviewTabView: View {
                 .foregroundColor(.gray)
         }
     }
-    
-    // MARK: - 輔助方法
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd"
-        return formatter.string(from: date)
-    }
 }

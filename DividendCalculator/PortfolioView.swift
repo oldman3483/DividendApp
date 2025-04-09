@@ -8,28 +8,6 @@
 
 import SwiftUI
 
-// MARK: - Empty State View
-struct EmptyStateView: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 48))
-                .foregroundColor(.gray.opacity(0.6))
-            
-            Text("尚未新增任何股票")
-                .font(.headline)
-                .foregroundColor(.gray)
-            
-            Text("點擊右下角的按鈕開始新增股票")
-                .font(.subheadline)
-                .foregroundColor(.gray.opacity(0.8))
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.bottom, 100)
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
-    }
-}
 
 // MARK: - Summary Section
 struct PortfolioSummarySection: View {
@@ -213,7 +191,7 @@ struct PortfolioView: View {
                 }
         }
     }
-
+    
     
     private func getStockCount() -> Int {
         switch selectedStockType {
@@ -290,46 +268,46 @@ struct PortfolioView: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
-
-
-        // 新增刪除和移動方法
-        private func deleteRegularStocks(at offsets: IndexSet) {
-            let regularStocks = getRegularInvestments()
-            let symbolsToDelete = offsets.map { regularStocks[$0].symbol }
-            stocks.removeAll { stock in
-                symbolsToDelete.contains(stock.symbol) && stock.bankId == bankId && stock.regularInvestment != nil
-            }
+    
+    
+    // 新增刪除和移動方法
+    private func deleteRegularStocks(at offsets: IndexSet) {
+        let regularStocks = getRegularInvestments()
+        let symbolsToDelete = offsets.map { regularStocks[$0].symbol }
+        stocks.removeAll { stock in
+            symbolsToDelete.contains(stock.symbol) && stock.bankId == bankId && stock.regularInvestment != nil
         }
-
-        private func deleteNormalStocks(at offsets: IndexSet) {
-            let normalStocks = getNormalStocks()
-            let symbolsToDelete = offsets.map { normalStocks[$0].symbol }
-            stocks.removeAll { stock in
-                symbolsToDelete.contains(stock.symbol) && stock.bankId == bankId && stock.regularInvestment == nil
-            }
+    }
+    
+    private func deleteNormalStocks(at offsets: IndexSet) {
+        let normalStocks = getNormalStocks()
+        let symbolsToDelete = offsets.map { normalStocks[$0].symbol }
+        stocks.removeAll { stock in
+            symbolsToDelete.contains(stock.symbol) && stock.bankId == bankId && stock.regularInvestment == nil
         }
-
-        private func moveRegularStocks(from source: IndexSet, to destination: Int) {
-            var regularStocks = getRegularInvestments()
-            regularStocks.move(fromOffsets: source, toOffset: destination)
+    }
+    
+    private func moveRegularStocks(from source: IndexSet, to destination: Int) {
+        var regularStocks = getRegularInvestments()
+        regularStocks.move(fromOffsets: source, toOffset: destination)
+        
+        // 更新排序
+        let sortedSymbols = regularStocks.map { $0.symbol }
+        stocks = stocks.sorted { stock1, stock2 in
+            guard stock1.bankId == bankId, stock2.bankId == bankId,
+                  stock1.regularInvestment != nil, stock2.regularInvestment != nil else {
+                return false
+            }
             
-            // 更新排序
-            let sortedSymbols = regularStocks.map { $0.symbol }
-            stocks = stocks.sorted { stock1, stock2 in
-                guard stock1.bankId == bankId, stock2.bankId == bankId,
-                      stock1.regularInvestment != nil, stock2.regularInvestment != nil else {
-                    return false
-                }
-                
-                guard let index1 = sortedSymbols.firstIndex(of: stock1.symbol),
-                      let index2 = sortedSymbols.firstIndex(of: stock2.symbol) else {
-                    return false
-                }
-                
-                return index1 < index2
+            guard let index1 = sortedSymbols.firstIndex(of: stock1.symbol),
+                  let index2 = sortedSymbols.firstIndex(of: stock2.symbol) else {
+                return false
             }
+            
+            return index1 < index2
         }
-
+    }
+    
     private func moveNormalStocks(from source: IndexSet, to destination: Int) {
         var normalStocks = getNormalStocks()
         normalStocks.move(fromOffsets: source, toOffset: destination)
@@ -370,7 +348,11 @@ struct PortfolioView: View {
                     )
                     
                     if getRegularInvestments().isEmpty && getNormalStocks().isEmpty {
-                        EmptyStateView()
+                        EmptyStateView(
+                            icon: "chart.line.uptrend.xyaxis",
+                            title: "尚未新增任何股票",
+                            subtitle: "點擊右下角的按鈕開始新增股票"
+                        )
                     } else {
                         // 根據選擇的類型顯示對應的股票列表
                         switch selectedStockType {
@@ -421,7 +403,7 @@ struct PortfolioView: View {
                 .environment(\.editMode, .constant(isEditing ? .active : .inactive))
             }
             
-            AddStockFloatingButton(action: {
+            FloatingActionButton(action: {
                 showingSearchView = true
             })
         }

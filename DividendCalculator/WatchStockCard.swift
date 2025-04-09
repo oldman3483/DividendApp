@@ -87,12 +87,7 @@ struct WatchStockCard: View {
         .frame(height: 40)
         .padding(.vertical, 8)
         .padding(.horizontal, 6)
-        .background(Color.black.opacity(0.3))
-        .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-        )
+        .cardBackground()
         .task {
             await loadClosingPrices()
         }
