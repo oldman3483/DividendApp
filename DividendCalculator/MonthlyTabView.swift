@@ -16,44 +16,111 @@ struct MonthlyTabView: View {
         VStack(spacing: 20) {
             // 月度股利圖表
             GroupBox {
-                VStack(spacing: 15) {
+                VStack(spacing: 12) {
                     Text("未來12個月股利預測")
                         .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     if metrics.monthlyDividends.isEmpty {
                         ProgressView()
-                            .frame(height: 200)
+                            .frame(height: 180)
                     } else {
                         monthlyDividendChart
-                            .frame(height: 250)
+                            .frame(height: 200)
                         
                         // 總計
                         HStack {
                             Text("預計年度總股利:")
                                 .foregroundColor(.gray)
+                                .font(.system(size: 14))
                             Spacer()
                             Text("$\(Int(metrics.monthlyDividends.reduce(0) { $0 + $1.amount }).formattedWithComma)")
                                 .foregroundColor(.green)
-                                .font(.system(size: 16, weight: .medium))
+                                .font(.system(size: 15, weight: .medium))
                         }
-                        .padding(.top, 8)
+                        .padding(.top, 6)
                     }
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 10)
             }
             .groupBoxStyle(TransparentGroupBox())
             
             // 月度股利明細
             GroupBox {
-                VStack(spacing: 15) {
+                VStack(spacing: 12) {
                     Text("月度股利明細")
                         .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     monthlySummaryView
                     
-                    monthlyDetailList
+                    // 改用更緊湊的列表布局，確保不超出屏幕
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            // 列表標題行
+                            HStack {
+                                Text("月份")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 45, alignment: .leading)
+                                
+                                Spacer()
+                                
+                                Text("總金額")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 60, alignment: .trailing)
+                                
+                                Text("一般持股")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 65, alignment: .trailing)
+                                
+                                Text("定期定額")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.gray)
+                                    .frame(width: 65, alignment: .trailing)
+                            }
+                            .padding(.bottom, 8)
+                            
+                            Divider()
+                                .background(Color.gray.opacity(0.3))
+                            
+                            ForEach(metrics.monthlyDividends.sorted(by: { $0.month < $1.month }).prefix(12)) { monthly in
+                                VStack(spacing: 0) {
+                                    HStack {
+                                        Text(formatMonth(monthly.month))
+                                            .font(.system(size: 14))
+                                            .frame(width: 45, alignment: .leading)
+                                        
+                                        Spacer()
+                                        
+                                        Text("$\(Int(monthly.amount).formattedWithComma)")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.green)
+                                            .frame(width: 60, alignment: .trailing)
+                                        
+                                        Text("$\(Int(monthly.normalDividend).formattedWithComma)")
+                                            .font(.system(size: 13))
+                                            .frame(width: 65, alignment: .trailing)
+                                        
+                                        Text("$\(Int(monthly.regularDividend).formattedWithComma)")
+                                            .font(.system(size: 13))
+                                            .frame(width: 65, alignment: .trailing)
+                                    }
+                                    .padding(.vertical, 8)
+                                    
+                                    if monthly.id != metrics.monthlyDividends.sorted(by: { $0.month < $1.month }).prefix(12).last?.id {
+                                        Divider()
+                                            .background(Color.gray.opacity(0.3))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                    .frame(height: 220)
                 }
                 .padding()
             }
@@ -61,18 +128,19 @@ struct MonthlyTabView: View {
             
             // 股利來源分析
             GroupBox {
-                VStack(spacing: 15) {
+                VStack(spacing: 12) {
                     Text("股利來源分析")
                         .font(.headline)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     dividendSourceChart
-                        .frame(height: 200)
+                        .frame(height: 180)
                     
                     // 來源說明
                     dividendSourceLegend
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 10)
             }
             .groupBoxStyle(TransparentGroupBox())
         }
@@ -112,9 +180,9 @@ struct MonthlyTabView: View {
         }
     }
     
-    // 月度股利摘要視圖
+    // 月度股利摘要視圖 - 更緊湊的布局
     private var monthlySummaryView: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 8) {
             summaryMetric(
                 title: "平均月配息",
                 value: calculateAverageMonthlyDividend(),
@@ -138,52 +206,7 @@ struct MonthlyTabView: View {
                 color: .orange
             )
         }
-        .padding(.vertical, 8)
-    }
-    
-    // 月度股利詳細列表
-    private var monthlyDetailList: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ForEach(metrics.monthlyDividends.sorted(by: { $0.month < $1.month }).prefix(12)) { monthly in
-                    HStack {
-                        Text(formatMonth(monthly.month))
-                            .frame(width: 60, alignment: .leading)
-                        
-                        Spacer()
-                        
-                        Text("$\(Int(monthly.amount).formattedWithComma)")
-                            .foregroundColor(.green)
-                            .frame(width: 80)
-                        
-                        HStack(spacing: 5) {
-                            Text("一般:")
-                                .foregroundColor(.gray)
-                                .font(.system(size: 12))
-                            Text("$\(Int(monthly.normalDividend).formattedWithComma)")
-                                .font(.system(size: 12))
-                        }
-                        .frame(width: 100)
-                        
-                        HStack(spacing: 5) {
-                            Text("定期:")
-                                .foregroundColor(.gray)
-                                .font(.system(size: 12))
-                            Text("$\(Int(monthly.regularDividend).formattedWithComma)")
-                                .font(.system(size: 12))
-                        }
-                        .frame(width: 100)
-                    }
-                    .padding(.vertical, 12)
-                    
-                    if monthly.id != metrics.monthlyDividends.sorted(by: { $0.month < $1.month }).prefix(12).last?.id {
-                        Divider()
-                            .background(Color.gray.opacity(0.3))
-                    }
-                }
-            }
-        }
-        .frame(height: 300)
+        .padding(.vertical, 5)
     }
     
     // 股利來源圓餅圖
@@ -223,12 +246,12 @@ struct MonthlyTabView: View {
         }
     }
     
-    // 股利來源圖例
+    // 股利來源圖例 - 更緊湊與簡潔
     private var dividendSourceLegend: some View {
         let (normalTotal, regularTotal) = calculateDividendSourceTotals()
         let total = normalTotal + regularTotal
         
-        return HStack(spacing: 20) {
+        return HStack(spacing: 16) {
             legendItem(
                 color: .green,
                 title: "一般持股股利",
@@ -243,50 +266,51 @@ struct MonthlyTabView: View {
                 percentage: total > 0 ? (regularTotal / total) * 100 : 0
             )
         }
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
     
     // MARK: - 輔助視圖元件
     
     private func summaryMetric(title: String, value: Double, format: (Double) -> String, subtitle: String? = nil, color: Color) -> some View {
-        VStack(alignment: .center, spacing: 4) {
+        VStack(alignment: .center, spacing: 3) {
             Text(title)
-                .font(.system(size: 12))
+                .font(.system(size: 11))
                 .foregroundColor(.gray)
             
             Text(format(value))
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(color)
             
             if let subtitle = subtitle {
                 Text(subtitle)
-                    .font(.system(size: 12))
+                    .font(.system(size: 10))
                     .foregroundColor(.gray)
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .background(Color.gray.opacity(0.05))
         .cornerRadius(8)
     }
     
     private func legendItem(color: Color, title: String, value: String, percentage: Double) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Circle()
                 .fill(color)
-                .frame(width: 12, height: 12)
+                .frame(width: 10, height: 10)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundColor(.gray)
                 
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     Text(value)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                     
                     Text(String(format: "(%.1f%%)", percentage))
-                        .font(.system(size: 12))
+                        .font(.system(size: 11))
                         .foregroundColor(.gray)
                 }
             }
