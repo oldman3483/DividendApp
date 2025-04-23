@@ -201,14 +201,14 @@ struct RiskTabView: View {
     private func riskComponentRow(title: String, value: Double, detail: String, color: Color) -> some View {
         HStack {
             Text(title)
-                .font(.system(size: 16))
+                .font(.system(size: 15))
                 .foregroundColor(.gray)
             
             Spacer()
             
             HStack(spacing: 8) {
                 Text(formatRiskValue(title, value))
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundColor(color)
                 
                 Text(detail)

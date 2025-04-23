@@ -124,7 +124,7 @@ struct InvestmentOverviewView: View {
                     Button(action: {
                         showReportGenerator = true
                     }) {
-                        Image(systemName: "chart.xyaxis.line")
+                        Image(systemName: "square.and.arrow.up")
                             .foregroundColor(.white)
                     }
                 }

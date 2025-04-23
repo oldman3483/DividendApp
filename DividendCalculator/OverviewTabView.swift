@@ -70,7 +70,7 @@ struct OverviewTabView: View {
                     showReportGenerator = true
                 }) {
                     HStack {
-                        Image(systemName: "chart.xyaxis.line")
+                        Image(systemName: "square.and.arrow.up")
                         Text("生成報表")
                     }
                     .frame(maxWidth: .infinity)
