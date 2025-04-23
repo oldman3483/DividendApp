@@ -21,6 +21,8 @@ struct InvestmentOverviewView: View {
     @State private var endDate = Date()
     @State private var isCustomRangeActive = false
     @State private var metricsService: CustomRangeMetricsService?
+    @State private var showReportGenerator = false
+
     
     private let timeRanges = ["1季", "1年", "3年", "5年", "自訂"]
     private let analysisTypes = ["amount", "yield"]
@@ -37,6 +39,7 @@ struct InvestmentOverviewView: View {
                     metrics: $investmentMetrics,
                     selectedTimeRange: $selectedTimeRange,
                     selectedAnalysisType: $selectedAnalysisType,
+                    showReportGenerator: $showReportGenerator,
                     timeRanges: timeRanges,
                     stockService: stockService
                 )
@@ -73,6 +76,7 @@ struct InvestmentOverviewView: View {
                     metrics: $investmentMetrics,
                     selectedTimeRange: $selectedTimeRange,
                     selectedAnalysisType: $selectedAnalysisType,
+                    showReportGenerator: $showReportGenerator,
                     timeRanges: timeRanges,
                     stockService: stockService
                 )
@@ -116,6 +120,17 @@ struct InvestmentOverviewView: View {
                     Text("投資總覽")
                         .navigationTitleStyle()
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showReportGenerator = true
+                    }) {
+                        Image(systemName: "chart.xyaxis.line")
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .sheet(isPresented: $showReportGenerator) {
+                ReportGeneratorView(stocks: $stocks)
             }
         }
         .task {

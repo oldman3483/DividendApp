@@ -8,11 +8,14 @@
 import SwiftUI
 import Charts
 
+
 struct OverviewTabView: View {
     @Binding var stocks: [Stock]
     @Binding var metrics: InvestmentMetrics
     @Binding var selectedTimeRange: String
     @Binding var selectedAnalysisType: String
+    @Binding var showReportGenerator: Bool
+
     let timeRanges: [String]
     let stockService: LocalStockService
     
@@ -23,6 +26,9 @@ struct OverviewTabView: View {
             
             // 績效指標
             performanceMetricsView
+            
+            //報表預覽卡片
+            reportPreviewCard
             
             // 股利統計
             dividendStatistics
@@ -37,6 +43,49 @@ struct OverviewTabView: View {
     }
     
     // MARK: - 子視圖
+    
+    private var reportPreviewCard: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("投資報表")
+                        .font(.headline)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showReportGenerator = true
+                    }) {
+                        Text("查看詳細報表")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
+                    }
+                }
+                
+                Text("生成投資報酬率或股利報酬率報表，輕鬆分享您的投資成果")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                
+                Button(action: {
+                    showReportGenerator = true
+                }) {
+                    HStack {
+                        Image(systemName: "chart.xyaxis.line")
+                        Text("生成報表")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(8)
+                }
+                .padding(.top, 5)
+            }
+            .padding()
+        }
+        .groupBoxStyle(TransparentGroupBox())
+        .padding(.horizontal)
+    }
     
     private var investmentSummaryCards: some View {
         VStack(spacing: 15) {
@@ -286,6 +335,7 @@ struct OverviewTabView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(15)
     }
+    
     
     // MARK: - 輔助視圖元件
     
