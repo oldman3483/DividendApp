@@ -60,7 +60,7 @@ struct GoalCalculatorView: View {
                 .padding()
             }
             .background(Color.black)
-            .navigationTitle("目標規劃")
+            .navigationTitle("我的規劃")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

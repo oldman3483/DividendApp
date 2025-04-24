@@ -28,7 +28,13 @@ class StockRepository {
     
     /// 搜索股票
     func searchStocks(query: String) async -> [SearchStock] {
-        // 優先使用遠端 API
+        // 檢查是否處於離線模式
+        if isInOfflineMode() {
+            // 使用本地搜索
+            return await localService.searchStocks(query: query)
+        }
+        
+        // 正常邏輯：優先使用遠端 API
         do {
             let apiResults = try await apiService.searchStocks(query: query)
             return apiResults.map { SearchStock(symbol: $0.symbol, name: $0.name) }
@@ -44,6 +50,15 @@ class StockRepository {
         // 先檢查緩存
         if let cachedInfo = stockCache[symbol] {
             return (cachedInfo.name, cachedInfo.dividendPerShare, cachedInfo.frequency)
+        }
+        
+        // 如果處於離線模式，直接使用本地數據
+        if isInOfflineMode() {
+            let name = await localService.getTaiwanStockInfo(symbol: symbol)
+            let dividend = await localService.getTaiwanStockDividend(symbol: symbol)
+            let frequency = await localService.getTaiwanStockFrequency(symbol: symbol)
+            
+            return (name, dividend, frequency)
         }
         
         // 嘗試從 API 獲取
@@ -137,6 +152,12 @@ class StockRepository {
             // 備用返回空列表
             return []
         }
+    }
+    
+    // 添加一個方法來檢查是否處於離線模式
+    func isInOfflineMode() -> Bool {
+        // 可以檢查網絡狀態或者從 UserDefaults 中獲取設置
+        return !NetworkMonitor().isConnected
     }
     
     // MARK: - 私有輔助方法

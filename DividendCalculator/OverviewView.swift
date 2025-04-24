@@ -81,7 +81,7 @@ struct OverviewView: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 15) {
                 HStack {
-                    Text("目標規劃")
+                    Text("我的規劃")
                         .font(.headline)
                     Spacer()
                     NavigationLink(destination: GoalCalculatorView()) {
@@ -228,7 +228,7 @@ struct OverviewView: View {
                     HStack {
                         Image(systemName: "chart.line.uptrend.xyaxis")
                             .foregroundColor(.white)
-                        Text("開始設定投資目標")
+                        Text("開始設定我的投資規劃")
                             .font(.system(size: 15))
                     }
                     .frame(maxWidth: .infinity)

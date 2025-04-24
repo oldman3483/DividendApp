@@ -14,8 +14,12 @@ struct SettingsView: View {
     @AppStorage("loginMethod") private var loginMethod = ""
     @AppStorage("dividendNotification") private var dividendNotification = true
     @AppStorage("priceNotification") private var priceNotification = true
+    @AppStorage("offlineMode") private var offlineMode = false
     @State private var showingLogoutAlert = false
     @State private var showingClearDataAlert = false
+    
+    // 環境變數來獲取網絡監視器狀態
+    @EnvironmentObject private var networkMonitor: NetworkMonitor
     
     var body: some View {
         NavigationStack {
@@ -53,8 +57,40 @@ struct SettingsView: View {
                             Text("股價變動提醒")
                         }
                     }
+                    // 離線模式設置
+                    Toggle(isOn: $offlineMode) {
+                        HStack {
+                            Image(systemName: offlineMode ? "wifi.slash" : "wifi")
+                                .foregroundColor(.blue)
+                            Text("離線模式")
+                        }
+                    }
+                    .onChange(of: offlineMode) { oldValue, newValue in
+                        // 當用戶手動切換離線模式時，通知應用的其他部分
+                        NotificationCenter.default.post(name: Notification.Name("OfflineModeChanged"), object: nil, userInfo: ["isOffline": newValue])
+                        
+                        if newValue {
+                            // 進入離線模式時的處理邏輯
+                            // 例如：可以顯示提示，保存當前數據狀態等
+                        } else if networkMonitor.isConnected {
+                            // 退出離線模式且有網絡連接時，嘗試同步數據
+                            Task {
+                                await synchronizeDataWithServer()
+                            }
+                        }
+                    }
+                    // 在離線模式啟用時顯示額外的信息
+                    if offlineMode {
+                        HStack {
+                            Text("離線模式下，部分功能可能不可用")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                                .padding(.leading, 30)
+                            Spacer()
+                        }
+                    }
                 } header: {
-                    Text("通知設定")
+                    Text("通知與連線設定")
                 }
                 
                 // 資料管理
@@ -119,6 +155,14 @@ struct SettingsView: View {
         } message: {
             Text("確定要清除所有資料嗎？此操作無法復原。")
         }
+    }
+    
+    // 添加與服務器同步數據的方法
+    private func synchronizeDataWithServer() async {
+        // 在這裡實現與服務器同步數據的邏輯
+        // 可以觸發 ContentView 中的數據更新方法
+        // 例如通過 NotificationCenter 發送通知
+        NotificationCenter.default.post(name: Notification.Name("SyncWithServer"), object: nil)
     }
     
     private func handleLogout() {

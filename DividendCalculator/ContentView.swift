@@ -21,12 +21,19 @@ struct ContentView: View {
     @State private var isLoading = false
     @State private var errorMessage: String? = nil
     @State private var showingErrorAlert = false
+    @State private var isOnline = true
+    @State private var showOfflineIndicator = false
     
     // API 相關狀態
     @State private var isOnlineMode = true // 是否使用在線數據模式
     
+    // 添加網絡監視器
+    @StateObject private var networkMonitor = NetworkMonitor()
+    
     @AppStorage("userId") private var userId = ""
     @AppStorage("loginMethod") private var loginMethod = ""
+    @AppStorage("offlineMode") private var offlineMode = false
+
     
     let stockService = LocalStockService() // 保留本地服務用於模擬價格變動
     let repository = StockRepository.shared // 添加 repository 用於 API 數據
@@ -77,6 +84,28 @@ struct ContentView: View {
                 searchBar.zIndex(1)
                 mainContent
             }
+//            // 離線指示器
+//            if showOfflineIndicator {
+//                VStack {
+//                    HStack {
+//                        Spacer()
+//                        HStack(spacing: 4) {
+//                            Image(systemName: "wifi.slash")
+//                                .foregroundColor(.white)
+//                            Text("離線模式")
+//                                .font(.caption)
+//                                .foregroundColor(.white)
+//                        }
+//                        .padding(.horizontal, 10)
+//                        .padding(.vertical, 5)
+//                        .background(Color.gray.opacity(0.8))
+//                        .cornerRadius(15)
+//                        .padding(.trailing, 10)
+//                        .padding(.top, 5)
+//                    }
+//                    Spacer()
+//                }
+//            }
         }
         .alert("登出確認", isPresented: $showingLogoutAlert) {
             Button("取消", role: .cancel) { }
@@ -107,6 +136,17 @@ struct ContentView: View {
             }
             saveData()
         }
+        .onChange(of: networkMonitor.isConnected) { oldValue, newValue in
+            isOnline = newValue
+            showOfflineIndicator = !newValue
+            
+            // 如果網絡恢復連接，嘗試與服務器同步數據
+            if newValue && !oldValue {
+                Task {
+                    await synchronizeDataWithServer()
+                }
+            }
+        }
     }
     
     // MARK: - 方法
@@ -117,12 +157,19 @@ struct ContentView: View {
         Task {
             isLoading = true
             
+            // 檢查網絡連接狀態和離線模式設置
+            isOnlineMode = networkMonitor.isConnected && !offlineMode
+            
             if isOnlineMode {
                 // 嘗試從 API 加載數據
                 await loadDataFromAPI()
             } else {
                 // 從本地緩存加載資料
                 loadLocalData()
+                // 如果是手動設置的離線模式，顯示提示
+                if offlineMode {
+                    showOfflineIndicator = true
+                }
             }
             
             // 在獲取完成後確保有銀行
@@ -138,6 +185,39 @@ struct ContentView: View {
             
             isLoading = false
         }
+        // 添加離線模式變更的通知觀察者
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("OfflineModeChanged"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let isOffline = notification.userInfo?["isOffline"] as? Bool else { return }
+            
+            self.isOnlineMode = !isOffline && self.networkMonitor.isConnected
+            self.showOfflineIndicator = isOffline
+            
+            // 根據離線模式變更來處理數據
+            if !isOffline && self.networkMonitor.isConnected {
+                // 如果退出離線模式且有網絡，嘗試同步數據
+                Task {
+                    await self.loadDataFromAPI()
+                }
+            }
+        }
+        // 添加同步服務器數據的通知觀察者
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("SyncWithServer"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            // 嘗試同步數據
+            Task {
+                await self.loadDataFromAPI()
+            }
+        }
+    }
+    private func synchronizeDataWithServer() async {
+        await loadDataFromAPI()
     }
     
     private func setupAppearance() {
