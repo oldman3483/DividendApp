@@ -17,11 +17,11 @@ struct MainTabView: View {
         TabView {
             // Tab 1: 我的庫存
             NavigationStack {
-                BankListView(banks: $banks, stocks: $stocks)
+                OverviewView(banks: $banks, stocks: $stocks)
             }
             .padding(.top, 40)
             .tabItem {
-                Label("我的庫存", systemImage: "chart.pie.fill")
+                Label("總覽", systemImage: "chart.line.uptrend.xyaxis")
             }
             
             // Tab 2: 觀察清單
