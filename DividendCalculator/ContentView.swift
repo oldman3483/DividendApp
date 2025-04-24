@@ -25,6 +25,9 @@ struct ContentView: View {
     // API 相關狀態
     @State private var isOnlineMode = true // 是否使用在線數據模式
     
+    @AppStorage("userId") private var userId = ""
+    @AppStorage("loginMethod") private var loginMethod = ""
+    
     let stockService = LocalStockService() // 保留本地服務用於模擬價格變動
     let repository = StockRepository.shared // 添加 repository 用於 API 數據
     

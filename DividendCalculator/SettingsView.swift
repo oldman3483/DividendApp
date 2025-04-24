@@ -5,10 +5,13 @@
 //  Created by Heidie Lee on 2025/2/7.
 //
 
+
 import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("userId") private var userId = ""
+    @AppStorage("loginMethod") private var loginMethod = ""
     @AppStorage("dividendNotification") private var dividendNotification = true
     @AppStorage("priceNotification") private var priceNotification = true
     @State private var showingLogoutAlert = false
@@ -25,7 +28,8 @@ struct SettingsView: View {
                             .font(.title2)
                         Text("使用者帳號")
                         Spacer()
-                        Text("user@example.com")
+                        Text(loginMethod == "apple" ? "Apple ID 登入" :
+                             loginMethod == "guest" ? "訪客登入" : "未登入")
                             .foregroundColor(.gray)
                     }
                 } header: {
@@ -102,7 +106,7 @@ struct SettingsView: View {
         .alert("登出確認", isPresented: $showingLogoutAlert) {
             Button("取消", role: .cancel) { }
             Button("登出", role: .destructive) {
-                isLoggedIn = false
+                handleLogout()
             }
         } message: {
             Text("確定要登出嗎？")
@@ -117,6 +121,15 @@ struct SettingsView: View {
         }
     }
     
+    private func handleLogout() {
+        // 清除用戶狀態
+        userId = ""
+        loginMethod = ""
+        isLoggedIn = false
+        
+        print("使用者已登出")
+    }
+    
     private func clearAllData() {
         if let bundleID = Bundle.main.bundleIdentifier {
             // 清除 UserDefaults 數據
@@ -128,13 +141,11 @@ struct SettingsView: View {
             
             // 登出用戶
             isLoggedIn = false
+            userId = ""
+            loginMethod = ""
             
             // 發送通知以通知 ContentView 重置所有數據
             NotificationCenter.default.post(name: Notification.Name("ClearAllData"), object: nil)
         }
     }
-}
-
-#Preview {
-    SettingsView()
 }
