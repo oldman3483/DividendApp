@@ -11,6 +11,8 @@ import SwiftUI
 struct ContentView: View {
     // MARK: - 狀態變數
     @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("autoUpdateStocks") private var autoUpdateStocks = true
+
     @State private var stocks: [Stock] = []
     @State private var watchlist: [WatchStock] = []
     @State private var searchText: String = ""
@@ -160,7 +162,7 @@ struct ContentView: View {
             // 檢查網絡連接狀態和離線模式設置
             isOnlineMode = networkMonitor.isConnected && !offlineMode
             
-            if isOnlineMode {
+            if isOnlineMode && autoUpdateStocks {
                 // 嘗試從 API 加載數據
                 await loadDataFromAPI()
             } else {
@@ -312,9 +314,15 @@ struct ContentView: View {
                     }
                 }
             } catch {
-                print("更新實時數據失敗，股票: \(symbol), 錯誤: \(error.localizedDescription)")
-                // 出錯時繼續下一個股票，不中斷整個流程
-                continue
+                // 檢查是否為網絡連接問題或離線模式
+                if let apiError = error as? APIError,
+                   apiError.code == 0 || !NetworkMonitor().isConnected {
+                    print("網絡連接問題，暫停更新實時數據")
+                    break // 停止嘗試更新
+                } else {
+                    print("更新實時數據失敗，股票: \(symbol), 錯誤: \(error.localizedDescription)")
+                    continue // 對於特定股票的錯誤，跳過該股票繼續下一個
+                }
             }
         }
     }

@@ -193,27 +193,47 @@ struct RegularInvestmentDetailView: View {
                 // 基本資訊卡片
                 GroupBox {
                     VStack(alignment: .leading, spacing: 12) {
-                        // 定期定額設定
+                        // 標題區域
+                        HStack {
+                            Text(symbol)
+                                .font(.title2)
+                                .bold()
+                            Text(stock?.name ?? "")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.bottom, 8)
+                        
+                        // 定期定額設定詳情
                         DetailRow(
-                            title: "投資金額",
+                            title: "計劃標題",
+                            value: stock?.regularInvestment?.title ?? ""
+                        )
+                        
+                        DetailRow(
+                            title: "每期金額",
                             value: String(format: "$ %.0f", stock?.regularInvestment?.amount ?? 0)
                         )
+                        
                         DetailRow(
                             title: "投資頻率",
                             value: stock?.regularInvestment?.frequency.rawValue ?? ""
                         )
+                        
                         DetailRow(
                             title: "開始日期",
                             value: formatDate(stock?.regularInvestment?.startDate)
                         )
+                        
                         if let endDate = stock?.regularInvestment?.endDate {
                             DetailRow(title: "結束日期", value: formatDate(endDate))
                         }
+                        
                         DetailRow(
                             title: "執行狀態",
                             value: stock?.regularInvestment?.executionStatus.description ?? "未啟用",
                             valueColor: stock?.regularInvestment?.executionStatus.color ?? .gray
                         )
+                        
                         if let note = stock?.regularInvestment?.note, !note.isEmpty {
                             DetailRow(title: "備註", value: note)
                         }
@@ -233,6 +253,7 @@ struct RegularInvestmentDetailView: View {
                         let executedAmount = (stock?.regularInvestment?.transactions ?? [])
                             .filter { $0.isExecuted }
                             .reduce(0) { $0 + $1.amount }
+                            
                         DetailRow(
                             title: "已執行投資",
                             value: String(format: "$ %.0f", executedAmount)
@@ -242,6 +263,7 @@ struct RegularInvestmentDetailView: View {
                         let pendingAmount = (stock?.regularInvestment?.transactions ?? [])
                             .filter { !$0.isExecuted }
                             .reduce(0) { $0 + $1.amount }
+                            
                         if pendingAmount > 0 {
                             DetailRow(
                                 title: "預計投資",

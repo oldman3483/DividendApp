@@ -40,7 +40,7 @@ class LocalStockService {
         }
         
         // 獲取最後價格
-        guard let lastPrice = lastPrices[symbol] else { return basePrice }
+        let lastPrice = lastPrices[symbol] ?? basePrice
         
         // 生成隨機波動
         let randomVolatility = Double.random(in: volatilityRange)
