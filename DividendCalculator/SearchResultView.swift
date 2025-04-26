@@ -42,7 +42,7 @@ struct SearchResultView: View {
                                 initialSymbol: stock.symbol,
                                 initialName: stock.name,
                                 bankId: bankId ?? banks.first?.id ?? UUID(),
-                                isFromBankPortfolio: false
+                                isFromBankPortfolio: true
                             )) {
                                 VStack(alignment: .leading) {
                                     Text(stock.symbol)

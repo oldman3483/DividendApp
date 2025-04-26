@@ -53,9 +53,8 @@ struct AddStockView: View {
         self.bankId = bankId
         self.isFromBankPortfolio = isFromBankPortfolio
         
-        // 如果銀行列表不為空，優先選擇第一個銀行
-        let initialBank = banks.wrappedValue.first ?? Bank(name: "預設銀行")
-        _selectedBankId = State(initialValue: initialBank.id)
+        // 修改這裡：優先使用傳入的 bankId
+        _selectedBankId = State(initialValue: bankId)
         
         let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames")?[0] ?? "自選清單1"
         _selectedWatchlist = State(initialValue: defaultWatchlist)
