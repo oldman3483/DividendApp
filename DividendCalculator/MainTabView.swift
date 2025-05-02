@@ -19,7 +19,7 @@ struct MainTabView: View {
     
     var body: some View {
         TabView {
-            // Tab 1: 我的庫存
+            // Tab 1: 總覽
             NavigationStack {
                 OverviewView(banks: $banks, stocks: $stocks)
             }

@@ -511,6 +511,9 @@ struct ReportGeneratorView: View {
             // 生成一個更精美的報表圖像
             let screenshot = createReportImage()
             
+//            // 報表生成完成後顯示插頁式廣告
+//            AdMobManager.shared.reportGenerationCompleted()
+//            
             // 準備分享項目
             let reportTitle = "\(selectedReportType.rawValue)報表"
             _ = isCustomRangeActive ?

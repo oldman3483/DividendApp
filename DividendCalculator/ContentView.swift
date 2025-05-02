@@ -278,8 +278,26 @@ struct ContentView: View {
         // 儲存清空後的狀態
         saveData()
         
+        // 確保重置所有 UserDefaults 的值，包括「我的規劃」相關的數據
+        // 這裡不需要逐一列出所有 key，因為使用者會自己重新建立規劃
+        if let bundleID = Bundle.main.bundleIdentifier {
+            let defaults = UserDefaults.standard
+            let keys = defaults.dictionaryRepresentation().keys
+            
+            // 保留特定的設定
+            let keysToKeep = ["isLoggedIn", "userId", "loginMethod", "dividendNotification", "priceNotification", "offlineMode"]
+            
+            for key in keys {
+                // 判斷是否需要保留該設定
+                if !keysToKeep.contains(key) {
+                    defaults.removeObject(forKey: key)
+                }
+            }
+        }
+        
         print("所有數據已重置")
     }
+    
     // 從 API 載入資料
     private func loadDataFromAPI() async {
         // 在實際情況中，你需要實現以下 API 端點：

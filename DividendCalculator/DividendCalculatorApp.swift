@@ -9,14 +9,15 @@ import SwiftUI
 
 @main
 struct DividendCalculatorApp: App {
-    // 創建網絡監視器實例作為環境對象
     @StateObject private var networkMonitor = NetworkMonitor()
+//    @StateObject private var adManager = AdMobManager.shared // 添加這行
     
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .preferredColorScheme(.dark) // 強制使用深色模式
-                .environmentObject(networkMonitor) // 將網絡監視器注入環境
+                .preferredColorScheme(.dark)
+                .environmentObject(networkMonitor)
+//                .environmentObject(adManager) // 添加這行
         }
     }
 }

@@ -11,6 +11,9 @@ import Charts
 struct GoalCalculatorView: View {
     // 股票選擇
     @State private var selectedSymbol = "0050" // 默認0050
+    @State private var clearDataObserver: NSObjectProtocol?
+
+    
     private let availableSymbols = [
         ("0050", "元大台灣50ETF"),
         ("2330", "台積電")
@@ -63,9 +66,39 @@ struct GoalCalculatorView: View {
             .navigationTitle("我的規劃")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .onAppear {
+            // 添加清除數據的通知觀察者
+            clearDataObserver = NotificationCenter.default.addObserver(
+                forName: Notification.Name("ClearAllData"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                self.resetGoalData()
+            }
+        }
+        .onDisappear {
+            // 移除觀察者
+            if let observer = clearDataObserver {
+                NotificationCenter.default.removeObserver(observer)
+            }
+        }
     }
     
     // MARK: - 子視圖
+    
+    // 添加重置目標資料的方法
+    private func resetGoalData() {
+        // 重置目標值為預設值
+        selectedSymbol = "0050"
+        goalAmount = "1000000"
+        investmentYears = 7
+        investmentFrequency = 12
+        
+        // 重置計算結果
+        requiredAmount = 0
+        projectionData = []
+        showResults = false
+    }
     
     // 股票選擇視圖
     private var stockSelectionView: some View {
@@ -370,6 +403,15 @@ struct GoalCalculatorView: View {
             self.projectionData = projection
             self.showResults = true
             self.isCalculating = false
+            
+            // 計算目標年份（當前年份 + 投資年限）
+            let currentYear = Calendar.current.component(.year, from: Date())
+            let targetYear = currentYear + self.investmentYears
+            
+            // 將規劃數據儲存到 AppStorage
+            UserDefaults.standard.set(goalAmountValue, forKey: "targetAmount")
+            UserDefaults.standard.set(0.0, forKey: "currentAmount") // 初始已投資設為 0
+            UserDefaults.standard.set(targetYear, forKey: "targetYear")
         }
     }
     

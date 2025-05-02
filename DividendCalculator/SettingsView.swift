@@ -188,7 +188,17 @@ struct SettingsView: View {
             userId = ""
             loginMethod = ""
             
-            // 發送通知以通知 ContentView 重置所有數據
+            // 特別確保清除我的規劃相關的所有數據
+            UserDefaults.standard.removeObject(forKey: "targetAmount")
+            UserDefaults.standard.removeObject(forKey: "currentAmount")
+            UserDefaults.standard.removeObject(forKey: "targetYear")
+            UserDefaults.standard.removeObject(forKey: "selectedSymbol")
+            UserDefaults.standard.removeObject(forKey: "goalAmount")
+            UserDefaults.standard.removeObject(forKey: "investmentYears")
+            UserDefaults.standard.removeObject(forKey: "investmentFrequency")
+            UserDefaults.standard.removeObject(forKey: "planningData")
+            
+            // 發送通知以通知其他視圖重置所有數據
             NotificationCenter.default.post(name: Notification.Name("ClearAllData"), object: nil)
         }
     }

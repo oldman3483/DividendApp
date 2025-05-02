@@ -17,7 +17,7 @@ struct APIError: Error {
 class APIService {
     static let shared = APIService()
     
-    private let baseURL = "https://postgres-1-148949302162.asia-east1.run.app/data" // 替換成實際 API URL
+    private let baseURL = "https://postgres-1-148949302162.asia-east1.run.app"
     
     private init() {}
     
@@ -27,6 +27,7 @@ class APIService {
             throw APIError(code: 400, message: "無效的 URL")
         }
         
+        // 添加查詢參數
         components.queryItems = queryItems.isEmpty ? nil : queryItems
         
         guard let url = components.url else {
@@ -43,54 +44,18 @@ class APIService {
         return try await performRequest(request)
     }
     
-    // MARK: - 通用 POST 請求
-    func post<T: Decodable, E: Encodable>(path: String, body: E) async throws -> T {
-        guard let url = URL(string: "\(baseURL)/\(path)") else {
-            throw APIError(code: 400, message: "無效的 URL")
+    // MARK: - 獲取股利資料
+    func getDividendData(symbol: String) async throws -> DividendResponse {
+        // 表名格式為 t_{股票代號}
+        let tableName = "t_\(symbol)"
+        let queryItems = [URLQueryItem(name: "table_name", value: tableName)]
+        
+        do {
+            return try await get(path: "data", queryItems: queryItems)
+        } catch {
+            print("獲取股利資料失敗: \(error.localizedDescription)")
+            throw error
         }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // 添加認證頭（如需要）
-        // request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
-        // 編碼請求體
-        let encoder = JSONEncoder()
-        request.httpBody = try encoder.encode(body)
-        
-        return try await performRequest(request)
-    }
-    
-    // MARK: - 通用 PUT 請求
-    func put<T: Decodable, E: Encodable>(path: String, body: E) async throws -> T {
-        guard let url = URL(string: "\(baseURL)/\(path)") else {
-            throw APIError(code: 400, message: "無效的 URL")
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // 編碼請求體
-        let encoder = JSONEncoder()
-        request.httpBody = try encoder.encode(body)
-        
-        return try await performRequest(request)
-    }
-    
-    // MARK: - 通用 DELETE 請求
-    func delete<T: Decodable>(path: String) async throws -> T {
-        guard let url = URL(string: "\(baseURL)/\(path)") else {
-            throw APIError(code: 400, message: "無效的 URL")
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        return try await performRequest(request)
     }
     
     // MARK: - 執行請求
@@ -124,4 +89,10 @@ class APIService {
             throw APIError(code: 0, message: "網絡錯誤: \(error.localizedDescription)")
         }
     }
+}
+
+// 用於錯誤響應的解碼
+struct ErrorResponse: Decodable {
+    let success: Bool
+    let message: String
 }

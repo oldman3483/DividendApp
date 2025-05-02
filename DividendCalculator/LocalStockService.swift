@@ -19,7 +19,8 @@ class LocalStockService {
         ("2882", "國泰金", 2.5, 2, 45.0),
         ("1301", "台塑", 4.0, 1, 110.0),
         ("1303", "南亞", 3.2, 1, 85.0),
-        ("2891", "中信金", 2.8, 2, 25.0)
+        ("2891", "中信金", 2.8, 2, 25.0),
+        ("0050", "元大台灣50", 2.0, 4, 120.0)
     ]
     
     // 加入波動性參數
@@ -27,8 +28,8 @@ class LocalStockService {
     private let trendBias: ClosedRange<Double> = -0.02...0.03       // 偏向上漲的趨勢
     
     // 記錄每個股票的最後價格
-    private var lastPrices: [String: Double] = [:]
-    
+    private var lastPrices = [String: Double]()
+
     // 取得指定日期的收盤價，加入更真實的價格變動
     func getStockPrice(symbol: String, date: Date) async -> Double? {
         // 取得基礎價格

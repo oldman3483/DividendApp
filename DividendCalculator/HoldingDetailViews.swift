@@ -125,30 +125,76 @@ struct NormalStockDetailView: View {
     
     private func purchaseDetailRow(for stock: Stock) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("購買日期：\(formatDate(stock.purchaseDate))")
-                        .font(.subheadline)
-                    Text("股數：\(stock.shares)股")
-                        .font(.subheadline)
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
+            GroupBox {
+                HStack {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "calendar")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 14))
+                            Text("購買日期")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        Text(formatDate(stock.purchaseDate))
+                            .font(.system(size: 16))
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "number")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 14))
+                            Text("股數")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        Text("\(stock.shares) 股")
+                            .font(.system(size: 16))
+                    }
+                    
+                    Spacer()
+                    
                     if let price = stock.purchasePrice {
-                        Text("股價：$\(String(format: "%.2f", price))")
-                            .font(.subheadline)
-                        Text("總成本：$\(String(format: "%.0f", Double(stock.shares) * price))")
-                            .font(.subheadline)
+                        VStack(alignment: .trailing, spacing: 8) {
+                            HStack {
+                                Text("股價")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                Image(systemName: "dollarsign.circle")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 14))
+                            }
+                            Text("$\(String(format: "%.2f", price))")
+                                .font(.system(size: 16))
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+                
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                    .padding(.vertical, 8)
+                
+                HStack {
+                    Text("總成本")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    if let price = stock.purchasePrice {
+                        Text("$\(String(format: "%.0f", Double(stock.shares) * price))")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.green)
                     }
                 }
             }
-            .padding(.vertical, 8)
-            
-            Divider()
-                .background(Color.gray.opacity(0.3))
+            .groupBoxStyle(TransparentGroupBox())
         }
+        .padding(.vertical, 4)
     }
     
     private func calculateAverageCost() -> Double? {

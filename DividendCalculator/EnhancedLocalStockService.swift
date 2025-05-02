@@ -19,6 +19,9 @@ class EnhancedLocalStockService {
     // 資料倉庫
     private let repository = StockRepository.shared
     
+    // API 服務
+    private let apiService = APIService.shared
+    
     private init() {}
     
     // MARK: - 公開方法
@@ -30,27 +33,46 @@ class EnhancedLocalStockService {
     
     /// 獲取股票名稱
     func getTaiwanStockInfo(symbol: String) async -> String? {
-        let info = await repository.getStockInfo(symbol: symbol)
-        return info.name
+        let stockInfo = await repository.getStockInfo(symbol: symbol)
+        return stockInfo.name
     }
     
     /// 獲取股利資訊
     func getTaiwanStockDividend(symbol: String) async -> Double? {
-        let info = await repository.getStockInfo(symbol: symbol)
-        return info.dividendPerShare
+        let stockInfo = await repository.getStockInfo(symbol: symbol)
+        return stockInfo.dividendPerShare
     }
     
     /// 獲取股利頻率
     func getTaiwanStockFrequency(symbol: String) async -> Int? {
-        let info = await repository.getStockInfo(symbol: symbol)
-        return info.frequency
+        let stockInfo = await repository.getStockInfo(symbol: symbol)
+        return stockInfo.frequency
     }
     
     /// 獲取股票價格
     func getStockPrice(symbol: String, date: Date) async -> Double? {
-        return await repository.getStockPrice(symbol: symbol, date: date)
+        do {
+            // 嘗試直接從資料庫獲取股票價格
+            // 我們目前模擬資料庫不包含價格數據，後續可補充
+            
+            // 獲取資料庫的股利數據，並使用除息參考價作為參考
+            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            
+            // 查找最近的除息日資料
+            let relevantRecord = findNearestDividendRecord(records: dividendResponse.data, date: date)
+            
+            if let record = relevantRecord, let referencePrice = record.exDividendReferencePrice {
+                // 基於除息參考價，加上随機波動
+                let randomFactor = Double.random(in: -0.05...0.05)
+                return referencePrice * (1.0 + randomFactor)
+            }
+        } catch {
+            print("從資料庫獲取股價失敗: \(error.localizedDescription)")
+        }
+        
+        // 備用方案：使用本地服務生成模擬價格
+        return await localService.getStockPrice(symbol: symbol, date: date)
     }
-    
     
     /// 獲取股利歷史
     func getDividendHistory(symbol: String, years: Int = 3) async -> [DividendData] {
@@ -58,18 +80,122 @@ class EnhancedLocalStockService {
     }
     
     /// 獲取股利發放時間表
+    // In EnhancedLocalStockService.swift
+    // Modify the getDividendSchedule method
+
     func getDividendSchedule(symbol: String) async -> [DividendData] {
-        return await repository.getDividendSchedule(symbol: symbol)
+        do {
+            // 嘗試從資料庫獲取
+            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            
+            // 過濾出未來的股利發放記錄
+            return DataMapper.mapToDividendSchedule(from: dividendResponse.data)
+        } catch {
+            print("獲取股利時間表失敗: \(error.localizedDescription)")
+            
+            // 使用本地模擬數據作為備用
+            return await generateSimulatedDividendSchedule(symbol: symbol)
+        }
+    }
+
+    // 添加這個模擬方法來生成股利時間表
+    private func generateSimulatedDividendSchedule(symbol: String) async -> [DividendData] {
+        var schedule: [DividendData] = []
+        
+        // 獲取基本股利資訊
+        let dividendPerShare = await localService.getTaiwanStockDividend(symbol: symbol) ?? 2.0
+        let frequency = await localService.getTaiwanStockFrequency(symbol: symbol) ?? 1
+        
+        let calendar = Calendar.current
+        let today = Date()
+        
+        // 根據頻率生成未來的股利發放時間表
+        for i in 0..<3 { // 生成未來3期
+            // 計算除息日和發放日
+            let monthsToAdd = 12 / frequency * (i + 1)
+            
+            guard let futureDate = calendar.date(byAdding: .month, value: monthsToAdd, to: today) else {
+                continue
+            }
+            
+            // 設置為當月15日
+            var components = calendar.dateComponents([.year, .month], from: futureDate)
+            components.day = 15
+            
+            guard let exDate = calendar.date(from: components),
+                  let payDate = calendar.date(byAdding: .day, value: 30, to: exDate) else {
+                continue
+            }
+            
+            // 每股股利根據期數稍微變化
+            let amount = dividendPerShare / Double(frequency) * (1.0 + Double(i) * 0.05)
+            
+            schedule.append(DividendData(
+                id: UUID(),
+                date: exDate,
+                amount: amount,
+                exDividendDate: exDate,
+                paymentDate: payDate
+            ))
+        }
+        
+        return schedule.sorted { $0.exDividendDate < $1.exDividendDate }
     }
     
     /// 獲取產業列表
     func getIndustries() async -> [String] {
-        return await repository.getIndustries()
+        // 檢查是否處於離線模式
+        if isInOfflineMode() {
+            // 使用預設產業列表
+            return getDefaultIndustries()
+        }
+        
+        // 嘗試從 API 獲取產業列表
+        do {
+            let industries = try await StockAPIService.shared.getIndustries()
+            return industries
+        } catch {
+            print("獲取產業列表失敗，使用預設列表: \(error.localizedDescription)")
+            return getDefaultIndustries()
+        }
     }
-    
+
     /// 獲取產業內的股票
     func getStocksByIndustry(industry: String) async -> [SearchStock] {
-        return await repository.getStocksByIndustry(industry: industry)
+        // 檢查是否處於離線模式
+        if isInOfflineMode() {
+            // 使用本地搜索，模擬產業過濾
+            return await repository.searchStocks(query: "")
+                .filter { _ in Double.random(in: 0...1) < 0.3 }
+                .prefix(10)
+                .map { $0 }
+        }
+        
+        // 從 API 獲取特定產業的股票
+        do {
+            let stocksInfo = try await StockAPIService.shared.getStocksByIndustry(industry: industry)
+            return stocksInfo.map { SearchStock(symbol: $0.symbol, name: $0.name) }
+        } catch {
+            print("獲取產業股票失敗，使用隨機模擬數據: \(error.localizedDescription)")
+            return await repository.searchStocks(query: "")
+                .filter { _ in Double.random(in: 0...1) < 0.3 }
+                .prefix(10)
+                .map { $0 }
+        }
+    }
+
+    // 新增輔助方法: 檢查是否處於離線模式
+    private func isInOfflineMode() -> Bool {
+        return !NetworkMonitor().isConnected || UserDefaults.standard.bool(forKey: "offlineMode")
+    }
+
+    // 新增輔助方法: 獲取預設產業列表
+    private func getDefaultIndustries() -> [String] {
+        return [
+            "半導體", "電子零組件", "電腦及周邊設備", "光電", "通信網路",
+            "電子通路", "資訊服務", "其他電子", "金融保險", "建材營造",
+            "航運", "生技醫療", "食品", "紡織纖維", "鋼鐵", "觀光"
+        ]
     }
     
     /// 更新定期定額股票的交易數據
@@ -93,17 +219,19 @@ class EnhancedLocalStockService {
             
             // 如果這個日期還沒有交易紀錄，且日期不超過結束日期（如果有設定的話）
             if existingTransaction == nil,
-               regularInvestment.endDate.map({ date <= $0 }) ?? true,
-               let price = await repository.getStockPrice(symbol: stock.symbol, date: date) {
-                let shares = Int(regularInvestment.amount / price)
-                let transaction = RegularInvestmentTransaction(
-                    date: date,
-                    amount: regularInvestment.amount,
-                    shares: shares,
-                    price: price,
-                    isExecuted: date <= Date()
-                )
-                transactions.append(transaction)
+               regularInvestment.endDate.map({ date <= $0 }) ?? true {
+                // 嘗試從資料庫獲取該日期的股價
+                if let price = await getStockPrice(symbol: stock.symbol, date: date) {
+                    let shares = Int(regularInvestment.amount / price)
+                    let transaction = RegularInvestmentTransaction(
+                        date: date,
+                        amount: regularInvestment.amount,
+                        shares: shares,
+                        price: price,
+                        isExecuted: date <= Date()
+                    )
+                    transactions.append(transaction)
+                }
             }
         }
         
@@ -113,5 +241,31 @@ class EnhancedLocalStockService {
         // 更新定期定額的交易紀錄
         regularInvestment.transactions = transactions
         stock.regularInvestment = regularInvestment
+    }
+    
+    // MARK: - 私有輔助方法
+    
+    /// 查找最接近指定日期的股利記錄
+    private func findNearestDividendRecord(records: [DividendRecord], date: Date) -> DividendRecord? {
+        // 按時間排序的記錄
+        let sortedRecords = records.compactMap { record -> (DividendRecord, Date)? in
+            guard let exDate = record.exDividendDateObj else { return nil }
+            return (record, exDate)
+        }
+        .sorted { $0.1 < $1.1 }
+        
+        // 找到最接近日期的記錄
+        var closestRecord: DividendRecord? = nil
+        var minDifference = Double.infinity
+        
+        for (record, exDate) in sortedRecords {
+            let difference = abs(exDate.timeIntervalSince(date))
+            if difference < minDifference {
+                minDifference = difference
+                closestRecord = record
+            }
+        }
+        
+        return closestRecord
     }
 }

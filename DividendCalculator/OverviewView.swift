@@ -11,10 +11,10 @@ struct OverviewView: View {
     @Binding var banks: [Bank]
     @Binding var stocks: [Stock]
     
-    // 模擬的目標規劃數據
-    @State private var targetAmount: Double = 1_000_000
-    @State private var currentAmount: Double = 750_000
-    @State private var targetYear: Int = 2028
+    // 使用 AppStorage
+    @AppStorage("targetAmount") private var targetAmount: Double?
+    @AppStorage("currentAmount") private var currentAmount: Double?
+    @AppStorage("targetYear") private var targetYear: Int?
     
     // 股票服務
     private let stockService = LocalStockService()
@@ -51,7 +51,25 @@ struct OverviewView: View {
                 }
             }
         }
+        .onAppear {
+            // 添加清除數據的通知觀察者
+            NotificationCenter.default.addObserver(
+                forName: Notification.Name("ClearAllData"),
+                object: nil,
+                queue: .main
+            ) { _ in
+                // 重置我的規劃數據
+                self.targetAmount = 1_000_000
+                self.currentAmount = 0  // 設置為0，因為清除所有數據
+                self.targetYear = 2028
+            }
+        }
+        .onDisappear {
+            // 移除觀察者
+            NotificationCenter.default.removeObserver(self)
+        }
     }
+    
     
     // 投資總覽卡片 - 使用 GroupBox 和細分的 MainMetricCard
     private var investmentOverviewCard: some View {
@@ -79,61 +97,91 @@ struct OverviewView: View {
     // 目標規劃卡片 - 統一使用 GroupBox
     private var goalPlanningCard: some View {
         GroupBox {
-            VStack(alignment: .leading, spacing: 15) {
-                HStack {
-                    Text("我的規劃")
+            if targetAmount == nil || currentAmount == nil || targetYear == nil {
+                // 空狀態視圖
+                VStack(alignment: .center, spacing: 15) {
+                    Text("尚未設定投資目標")
                         .font(.headline)
-                    Spacer()
+                        .foregroundColor(.gray)
+                    
+                    Text("點擊下方按鈕開始設定您的投資規劃")
+                        .font(.subheadline)
+                        .foregroundColor(.gray.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                    
                     NavigationLink(destination: GoalCalculatorView()) {
-                        Text("詳細規劃")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
+                        HStack {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .foregroundColor(.white)
+                            Text("建立我的規劃")
+                                .font(.system(size: 15))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .cornerRadius(8)
                     }
+                    .padding(.top, 10)
                 }
-                
-                // 進度條
-                GeometryReader { geometry in
-                    ZStack(alignment: .leading) {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(height: 20)
-                            .cornerRadius(10)
+                .padding()
+            } else {
+                // 已設定目標時的視圖 (與原先相同)
+                VStack(alignment: .leading, spacing: 15) {
+                    HStack {
+                        Text("我的規劃")
+                            .font(.headline)
+                        Spacer()
+                        NavigationLink(destination: GoalCalculatorView()) {
+                            Text("詳細規劃")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    
+                    // 進度條
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(height: 20)
+                                .cornerRadius(10)
+                            
+                            Rectangle()
+                                .fill(Color.blue)
+                                .frame(width: geometry.size.width * CGFloat((currentAmount ?? 0) / (targetAmount ?? 1)), height: 20)
+                                .cornerRadius(10)
+                        }
+                    }
+                    .frame(height: 20)
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("目標金額")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                            Text("$\(Int(targetAmount ?? 0).formattedWithComma)")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white)
+                        }
                         
-                        Rectangle()
-                            .fill(Color.blue)
-                            .frame(width: geometry.size.width * CGFloat(currentAmount / targetAmount), height: 20)
-                            .cornerRadius(10)
-                    }
-                }
-                .frame(height: 20)
-                
-                HStack {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("目標金額")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        Text("$\(Int(targetAmount).formattedWithComma)")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 5) {
+                            Text("預計達成")
+                                .font(.system(size: 14))
+                                .foregroundColor(.gray)
+                            Text("\(targetYear ?? 0)年")
+                                .font(.system(size: 16))
+                                .foregroundColor(.white)
+                        }
                     }
                     
-                    Spacer()
-                    
-                    VStack(alignment: .trailing, spacing: 5) {
-                        Text("預計達成")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        Text("\(targetYear)年")
-                            .font(.system(size: 16))
-                            .foregroundColor(.white)
-                    }
+                    Text("已投資: $\(Int(currentAmount ?? 0).formattedWithComma)")
+                        .font(.system(size: 15))
+                        .foregroundColor(.green)
                 }
-                
-                Text("已投資: $\(Int(currentAmount).formattedWithComma)")
-                    .font(.system(size: 15))
-                    .foregroundColor(.green)
+                .padding()
             }
-            .padding()
         }
         .groupBoxStyle(TransparentGroupBox())
     }
