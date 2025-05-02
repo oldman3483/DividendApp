@@ -40,6 +40,12 @@ struct AddStockView: View {
     @State private var hasEndDate: Bool = false
     @State private var regularNote: String = ""
     
+    // 單獨的載入狀態變數
+    @State private var isDividendLoading: Bool = false
+    @State private var isFrequencyLoading: Bool = false
+    @State private var isPriceLoading: Bool = false
+    
+    
     private let localStockService = LocalStockService()
     private let destinations = ["銀行", "觀察清單"]
     
@@ -141,11 +147,26 @@ struct AddStockView: View {
                                 if isRegularInvestment {
                                     regularStartDate = newDate
                                 }
+                                
+                                // 當日期變更時重新載入價格
+                                Task {
+                                    await loadStockPrice()
+                                }
                             }
                         
-                        if !purchasePrice.isEmpty {
+                        if isPriceLoading {
                             HStack {
                                 Text("股價")
+                                    .foregroundColor(.gray)
+                                Spacer()
+                                Text("載入中...")
+                                    .foregroundColor(.gray)
+                                    .italic()
+                            }
+                        } else if !purchasePrice.isEmpty {
+                            HStack {
+                                Text("股價")
+                                    .foregroundColor(.gray)
                                 Spacer()
                                 Text("$\(purchasePrice)")
                                     .foregroundColor(.gray)
@@ -195,18 +216,38 @@ struct AddStockView: View {
                     
                     // 股利信息區塊
                     Section(header: Text("股利資訊")) {
-                        if !dividendPerShare.isEmpty {
+                        if isDividendLoading {
                             HStack {
                                 Text("每股股利")
+                                    .foregroundColor(.gray)
+                                Spacer()
+                                Text("下載中...")
+                                    .foregroundColor(.gray)
+                                    .italic()
+                            }
+                        } else if !dividendPerShare.isEmpty {
+                            HStack {
+                                Text("每股股利")
+                                    .foregroundColor(.gray)
                                 Spacer()
                                 Text("$\(dividendPerShare)")
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.green)
                             }
                         }
                         
-                        if let freq = frequency {
+                        if isFrequencyLoading {
                             HStack {
                                 Text("發放頻率")
+                                    .foregroundColor(.gray)
+                                Spacer()
+                                Text("更新中...")
+                                    .foregroundColor(.gray)
+                                    .italic()
+                            }
+                        } else if let freq = frequency {
+                            HStack {
+                                Text("發放頻率")
+                                    .foregroundColor(.gray)
                                 Spacer()
                                 Text(getFrequencyText(freq))
                                     .foregroundColor(.gray)
@@ -214,26 +255,26 @@ struct AddStockView: View {
                         }
                     }
                 }
-                
-                if !errorMessage.isEmpty {
-                    Section {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                    }
+            }
+            
+            if !errorMessage.isEmpty {
+                Section {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
                 }
             }
-            .navigationTitle("新增股票")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-//                ToolbarItem(placement: .navigationBarLeading) {
-//                    Button("取消") { dismiss() }
-//                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("新增") {
-                        addStock()
-                    }
-                    .disabled(shouldDisableAddButton())
+        }
+        .navigationTitle("新增股票")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            //                ToolbarItem(placement: .navigationBarLeading) {
+            //                    Button("取消") { dismiss() }
+            //                }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("新增") {
+                    addStock()
                 }
+                .disabled(shouldDisableAddButton())
             }
         }
         .task {
@@ -242,6 +283,10 @@ struct AddStockView: View {
     }
 
     private func loadStockData() async {
+        // 設置各個欄位的載入狀態
+        isDividendLoading = true
+        isFrequencyLoading = true
+        
         // 使用 EnhancedLocalStockService 來獲取股息資料
         let enhancedService = EnhancedLocalStockService.shared
         
@@ -258,6 +303,10 @@ struct AddStockView: View {
             await MainActor.run {
                 self.dividendPerShare = String(format: "%.2f", dividend)
                 self.frequency = frequency
+                
+                // 更新完成後關閉載入狀態
+                self.isDividendLoading = false
+                self.isFrequencyLoading = false
             }
             
             print("成功從 API 獲取股息資料: 頻率=\(frequency), 每股股息=\(dividend)")
@@ -266,10 +315,16 @@ struct AddStockView: View {
             
             // 如果 API 獲取失敗，使用本地服務作為備用
             if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
-                dividendPerShare = String(format: "%.2f", dividend)
+                await MainActor.run {
+                    self.dividendPerShare = String(format: "%.2f", dividend)
+                    self.isDividendLoading = false
+                }
             }
             if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
-                frequency = freq
+                await MainActor.run {
+                    self.frequency = freq
+                    self.isFrequencyLoading = false
+                }
             }
         }
         
@@ -278,7 +333,7 @@ struct AddStockView: View {
     }
     
     private func loadStockPrice() async {
-        isLoadingPrice = true
+        isPriceLoading = true
         
         // 嘗試從 API 獲取股價資料
         do {
@@ -290,11 +345,17 @@ struct AddStockView: View {
             
             if let record = relevantRecord, let referencePrice = record.ex_dividend_reference_price {
                 // 使用除息參考價作為股價基準
-                purchasePrice = String(format: "%.2f", referencePrice)
+                await MainActor.run {
+                    self.purchasePrice = String(format: "%.2f", referencePrice)
+                    self.isPriceLoading = false
+                }
             } else {
                 // 如果找不到除息價格，使用本地服務
                 if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
-                    purchasePrice = String(format: "%.2f", price)
+                    await MainActor.run {
+                        self.purchasePrice = String(format: "%.2f", price)
+                        self.isPriceLoading = false
+                    }
                 }
             }
         } catch {
@@ -302,11 +363,12 @@ struct AddStockView: View {
             
             // 如果 API 獲取失敗，使用本地服務作為備用
             if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
-                purchasePrice = String(format: "%.2f", price)
+                await MainActor.run {
+                    self.purchasePrice = String(format: "%.2f", price)
+                    self.isPriceLoading = false
+                }
             }
         }
-        
-        isLoadingPrice = false
     }
     // 輔助方法：查找最接近指定日期的股利記錄
     private func findNearestDividendRecord(records: [DividendRecord], date: Date) -> DividendRecord? {
