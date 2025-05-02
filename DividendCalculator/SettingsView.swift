@@ -36,8 +36,8 @@ struct SettingsView: View {
                         Text("使用者帳號")
                         Spacer()
                         Text(loginMethod == "apple" ? "Apple ID 登入" :
-                             loginMethod == "guest" ? "訪客登入" : "未登入")
-                            .foregroundColor(.gray)
+                                loginMethod == "guest" ? "訪客登入" : "未登入")
+                        .foregroundColor(.gray)
                     }
                 } header: {
                     Text("帳戶資訊")
@@ -260,51 +260,55 @@ struct SettingsView: View {
             NotificationCenter.default.post(name: Notification.Name("ClearAllData"), object: nil)
         }
     }
-    
+        
     // 資料庫連接測試方法
     private func testDatabaseConnection() {
         isTestingDb = true
         
         Task {
-                do {
-                    print("開始測試資料庫連接...")
-                    
-                    // 先檢查網絡連接
-                    if !NetworkMonitor().isConnected {
-                        throw APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置並確保離線模式已關閉")
-                    }
-                    
-                    // 打印目標URL - 修改這裡
-                    let baseURL = "https://dividend-app-148949302162.asia-east1.run.app"
-                    let path = "get_t_0050_data"
-                    print("目標URL: \(baseURL)/\(path)")
-                    
-                    let dividendResponse = try await APIService.shared.getDividendData(symbol: "0050")
+            do {
+                print("開始測試資料庫連接...")
+                
+                // 先檢查網絡連接
+                if !NetworkMonitor().isConnected {
+                    throw APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置並確保離線模式已關閉")
+                }
+                
+                // 打印目標URL
+                let baseURL = "https://dividend-app-148949302162.asia-east1.run.app"
+                let path = "get_t_0050_data"
+                print("目標URL: \(baseURL)/\(path)")
+                
+                let dividendResponse = try await APIService.shared.getDividendData(symbol: "0050")
                 
                 var resultMessage = ""
                 
                 // 檢查資料是否成功獲取
-                    if dividendResponse.success {
-                        resultMessage = "連接成功！共獲取 \(dividendResponse.data.count) 筆0050的股利記錄"
-                        print(resultMessage)
-                        
-                        // 打印第一筆資料作為示例
-                        if let firstRecord = dividendResponse.data.first {
-                            let details = """
-                            第一筆資料:
-                            日期: \(firstRecord.date)
-                            股利年度: \(firstRecord.dividendYear)
-                            股利期間: \(firstRecord.dividendPeriod)
-                            現金股利: \(firstRecord.totalCashDividend)
-                            除息日: \(firstRecord.exDividendDate)
-                            """
-                            print(details)
-                            resultMessage += "\n\n共獲取 \(dividendResponse.data.count) 條記錄"
-                        }
-                    } else {
-                        resultMessage = "資料獲取失敗: \(dividendResponse.message ?? "未知錯誤")"
-                        print(resultMessage)
+                if dividendResponse.success {
+                    // 處理資料
+                    let processedData = SQLDataProcessor.shared.processDividendData(dividendResponse.data)
+                    let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+                    let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+                    
+                    resultMessage = "連接成功！共獲取 \(dividendResponse.data.count) 筆0050的股利記錄"
+                    
+                    if let firstProcessed = processedData.first {
+                        resultMessage += "\n\n處理後的第一筆資料:"
+                        resultMessage += "\n股票代號: \(firstProcessed.symbol)"
+                        resultMessage += "\n股利年度: \(firstProcessed.dividendYear)"
+                        resultMessage += "\n股利期間: \(firstProcessed.dividendPeriod)"
+                        resultMessage += "\n除息日: \(formatDate(firstProcessed.exDividendDate) ?? "無")"
+                        resultMessage += "\n發放日: \(formatDate(firstProcessed.distributionDate) ?? "無")"
+                        resultMessage += "\n除息參考價: \(String(format: "%.2f", firstProcessed.exDividendPrice))"
+                        resultMessage += "\n現金股利: \(String(format: "%.2f", firstProcessed.totalCashDividend))"
                     }
+                    
+                    resultMessage += "\n\n計算結果:"
+                    resultMessage += "\n股利頻率: \(frequency) (1=年配, 2=半年配, 4=季配)"
+                    resultMessage += "\n每股股利: \(String(format: "%.2f", dividendPerShare))"
+                } else {
+                    resultMessage = "資料獲取失敗: \(dividendResponse.message ?? "未知錯誤")"
+                }
                 
                 // 更新UI顯示測試結果
                 await MainActor.run {
@@ -359,5 +363,13 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+    
+    // 格式化日期的輔助函數
+    private func formatDate(_ date: Date?) -> String? {
+        guard let date = date else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM/dd"
+        return formatter.string(from: date)
     }
 }
