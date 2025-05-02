@@ -242,21 +242,94 @@ struct AddStockView: View {
     }
 
     private func loadStockData() async {
-        if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
-            dividendPerShare = String(format: "%.2f", dividend)
+        // 使用 EnhancedLocalStockService 來獲取股息資料
+        let enhancedService = EnhancedLocalStockService.shared
+        
+        // 嘗試從 API 獲取股息資料
+        do {
+            // 從 API 獲取股息資料
+            let dividendResponse = try await APIService.shared.getDividendData(symbol: initialSymbol)
+            
+            // 使用 SQLDataProcessor 處理資料
+            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+            let dividend = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+            
+            // 更新 UI
+            await MainActor.run {
+                self.dividendPerShare = String(format: "%.2f", dividend)
+                self.frequency = frequency
+            }
+            
+            print("成功從 API 獲取股息資料: 頻率=\(frequency), 每股股息=\(dividend)")
+        } catch {
+            print("從 API 獲取股息資料失敗: \(error.localizedDescription)")
+            
+            // 如果 API 獲取失敗，使用本地服務作為備用
+            if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
+                dividendPerShare = String(format: "%.2f", dividend)
+            }
+            if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
+                frequency = freq
+            }
         }
-        if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
-            frequency = freq
-        }
+        
+        // 載入股價資料
         await loadStockPrice()
     }
     
     private func loadStockPrice() async {
         isLoadingPrice = true
-        if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
-            purchasePrice = String(format: "%.2f", price)
+        
+        // 嘗試從 API 獲取股價資料
+        do {
+            // 獲取符合日期的股價資料，可能需要查詢近期的收盤價
+            let dividendResponse = try await APIService.shared.getDividendData(symbol: initialSymbol)
+            
+            // 查找最近的除息價格
+            let relevantRecord = findNearestDividendRecord(records: dividendResponse.data, date: purchaseDate)
+            
+            if let record = relevantRecord, let referencePrice = record.ex_dividend_reference_price {
+                // 使用除息參考價作為股價基準
+                purchasePrice = String(format: "%.2f", referencePrice)
+            } else {
+                // 如果找不到除息價格，使用本地服務
+                if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
+                    purchasePrice = String(format: "%.2f", price)
+                }
+            }
+        } catch {
+            print("從 API 獲取股價資料失敗: \(error.localizedDescription)")
+            
+            // 如果 API 獲取失敗，使用本地服務作為備用
+            if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
+                purchasePrice = String(format: "%.2f", price)
+            }
         }
+        
         isLoadingPrice = false
+    }
+    // 輔助方法：查找最接近指定日期的股利記錄
+    private func findNearestDividendRecord(records: [DividendRecord], date: Date) -> DividendRecord? {
+        // 按時間排序的記錄
+        let sortedRecords = records.compactMap { record -> (DividendRecord, Date)? in
+            guard let exDate = record.exDividendDateObj else { return nil }
+            return (record, exDate)
+        }
+        .sorted { $0.1 < $1.1 }
+        
+        // 找到最接近日期的記錄
+        var closestRecord: DividendRecord? = nil
+        var minDifference = Double.infinity
+        
+        for (record, exDate) in sortedRecords {
+            let difference = abs(exDate.timeIntervalSince(date))
+            if difference < minDifference {
+                minDifference = difference
+                closestRecord = record
+            }
+        }
+        
+        return closestRecord
     }
     
     private func addStock() {

@@ -39,14 +39,36 @@ class EnhancedLocalStockService {
     
     /// 獲取股利資訊
     func getTaiwanStockDividend(symbol: String) async -> Double? {
-        let stockInfo = await repository.getStockInfo(symbol: symbol)
-        return stockInfo.dividendPerShare
+        do {
+            // 從 API 獲取股息資料
+            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            
+            // 使用 SQLDataProcessor 處理資料
+            let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+            
+            return dividendPerShare
+        } catch {
+            print("從 API 獲取股息資料失敗，使用本地數據作為備用: \(error.localizedDescription)")
+            // 使用本地服務作為備用
+            return await localService.getTaiwanStockDividend(symbol: symbol)
+        }
     }
     
     /// 獲取股利頻率
     func getTaiwanStockFrequency(symbol: String) async -> Int? {
-        let stockInfo = await repository.getStockInfo(symbol: symbol)
-        return stockInfo.frequency
+        do {
+            // 從 API 獲取股息資料
+            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            
+            // 使用 SQLDataProcessor 處理資料
+            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+            
+            return frequency
+        } catch {
+            print("從 API 獲取股息頻率失敗，使用本地數據作為備用: \(error.localizedDescription)")
+            // 使用本地服務作為備用
+            return await localService.getTaiwanStockFrequency(symbol: symbol)
+        }
     }
     
     /// 獲取股票價格
