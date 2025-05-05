@@ -134,36 +134,6 @@ class StockRepository {
         return !NetworkMonitor().isConnected
     }
     
-    /// 獲取處理後的股利資料
-    func getProcessedDividendData(symbol: String) async -> [ProcessedDividendData] {
-        do {
-            // 從API獲取股利資料
-            let response = try await apiService.getDividendData(symbol: symbol)
-            
-            // 使用 SQLDataProcessor 處理資料
-            return SQLDataProcessor.shared.processDividendData(response.data)
-        } catch {
-            print("獲取股利資料失敗: \(error.localizedDescription)")
-            return [] // 返回空數組
-        }
-    }
-    /// 獲取股票的股利頻率和每股股利
-    func getDividendInfo(symbol: String) async -> (frequency: Int, dividendPerShare: Double) {
-        do {
-            // 從API獲取股利資料
-            let response = try await apiService.getDividendData(symbol: symbol)
-            
-            // 使用 SQLDataProcessor 處理資料
-            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: response.data)
-            let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: response.data)
-            
-            return (frequency, dividendPerShare)
-        } catch {
-            print("獲取股利資訊失敗: \(error.localizedDescription)")
-            return (1, 0.0) // 預設為年配，股利為0
-        }
-    }
-    
     // MARK: - 私有輔助方法
     
     // 從股利記錄判斷發放頻率

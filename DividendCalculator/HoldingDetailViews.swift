@@ -14,6 +14,11 @@ struct NormalStockDetailView: View {
     let symbol: String
     let bankId: UUID
     
+    // 添加狀態以存儲從SQL資料庫獲取的最新資料
+    @State private var updatedDividendPerShare: Double?
+    @State private var updatedFrequency: Int?
+    @State private var isLoadingDividendInfo: Bool = true
+    
     private var normalStocks: [Stock] {
         stocks.filter { $0.symbol == symbol && $0.bankId == bankId && $0.regularInvestment == nil }
     }
@@ -46,7 +51,7 @@ struct NormalStockDetailView: View {
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
-                // 股利資訊卡片
+                // 股利資訊卡片 - 使用更新後的資料
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("股利資訊")
@@ -54,19 +59,67 @@ struct NormalStockDetailView: View {
                             .padding(.bottom, 4)
                         
                         let stock = normalStocks.first
-                        DetailRow(
-                            title: "每股股利",
-                            value: String(format: "$ %.2f", stock?.dividendPerShare ?? 0)
-                        )
-                        DetailRow(
-                            title: "發放頻率",
-                            value: getFrequencyText(stock?.frequency ?? 1)
-                        )
-                        DetailRow(
-                            title: "年化股利",
-                            value: String(format: "$ %.0f", calculateTotalAnnualDividend()),
-                            valueColor: .green
-                        )
+                        
+                        // 每股股利行 - 添加載入指示器
+                        HStack {
+                            Text("每股股利")
+                                .foregroundColor(.gray)
+                            
+                            Spacer()
+                            
+                            if isLoadingDividendInfo {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 20, height: 20)
+                                Text("更新中...")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            } else {
+                                Text(String(format: "$ %.2f", updatedDividendPerShare ?? stock?.dividendPerShare ?? 0))
+                            }
+                        }
+                        
+                        // 發放頻率行 - 添加載入指示器
+                        HStack {
+                            Text("發放頻率")
+                                .foregroundColor(.gray)
+                            
+                            Spacer()
+                            
+                            if isLoadingDividendInfo {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 20, height: 20)
+                                Text("更新中...")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            } else {
+                                Text(getFrequencyText(updatedFrequency ?? stock?.frequency ?? 1))
+                            }
+                        }
+                        
+                        // 年化股利行
+                        HStack {
+                            Text("年化股利")
+                                .foregroundColor(.gray)
+                            
+                            Spacer()
+                            
+                            if isLoadingDividendInfo {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 20, height: 20)
+                                Text("更新中...")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            } else {
+                                Text(String(format: "$ %.0f", calculateTotalAnnualDividend(
+                                    withDividendPerShare: updatedDividendPerShare,
+                                    withFrequency: updatedFrequency
+                                )))
+                                .foregroundColor(.green)
+                            }
+                        }
                     }
                     .padding(.vertical, 4)
                 }
@@ -88,18 +141,33 @@ struct NormalStockDetailView: View {
                             value: String(format: "$ %.0f", totalInvestment)
                         )
                         
-                        DetailRow(
-                            title: "殖利率",
-                            value: String(format: "%.2f%%", calculateDividendYield()),
-                            valueColor: .green
-                        )
+                        HStack {
+                            Text("殖利率")
+                                .foregroundColor(.gray)
+                            
+                            Spacer()
+                            
+                            if isLoadingDividendInfo {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 20, height: 20)
+                                Text("更新中...")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 14))
+                            } else {
+                                Text(String(format: "%.2f%%", calculateDividendYield(
+                                    withDividendPerShare: updatedDividendPerShare,
+                                    withFrequency: updatedFrequency
+                                )))
+                                .foregroundColor(.green)
+                            }
+                        }
                     }
                     .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
-                
-                // 購買明細區塊
+                // 購買明細區塊 (保持不變)
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("購買明細")
@@ -113,17 +181,95 @@ struct NormalStockDetailView: View {
                     .padding(.vertical, 8)
                 }
                 .groupBoxStyle(TransparentGroupBox())
-                
-                
             }
             .padding()
         }
         .navigationTitle("一般持股詳細資訊")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.black.ignoresSafeArea())
+        .task {
+            // 視圖顯示時從SQL資料庫載入最新資料
+            await loadUpdatedDividendInfo()
+        }
+    }
+    
+    // 新增: 從SQL資料庫讀取最新的股息資料
+    private func loadUpdatedDividendInfo() async {
+        isLoadingDividendInfo = true
+        
+        do {
+            // 使用 APIService 和 SQLDataProcessor 獲取最新資料
+            let dividendResponse = try await APIService.shared.getDividendData(symbol: symbol)
+            
+            // 使用 SQLDataProcessor 處理資料
+            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+            let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+            
+            // 更新界面
+            await MainActor.run {
+                self.updatedDividendPerShare = dividendPerShare
+                self.updatedFrequency = frequency
+                self.isLoadingDividendInfo = false
+            }
+            
+            print("成功從 API 獲取股息資料: 頻率=\(frequency), 每股股息=\(dividendPerShare)")
+        } catch {
+            print("從 API 獲取股息資料失敗: \(error.localizedDescription)")
+            
+            // 如果 API 獲取失敗，使用本地服務作為備用
+            let localService = LocalStockService()
+            
+            if let dividend = await localService.getTaiwanStockDividend(symbol: symbol) {
+                await MainActor.run {
+                    self.updatedDividendPerShare = dividend
+                }
+            }
+            if let freq = await localService.getTaiwanStockFrequency(symbol: symbol) {
+                await MainActor.run {
+                    self.updatedFrequency = freq
+                }
+            }
+            
+            await MainActor.run {
+                self.isLoadingDividendInfo = false
+            }
+        }
+    }
+    
+    // 修改計算年化股利的方法，以使用更新的數據
+    private func calculateTotalAnnualDividend(withDividendPerShare dividend: Double? = nil, withFrequency frequency: Int? = nil) -> Double {
+        return normalStocks.reduce(0) {
+            let divPerShare = dividend ?? $1.dividendPerShare
+            let freq = frequency ?? $1.frequency
+            return $0 + (Double($1.shares) * divPerShare * Double(freq))
+        }
+    }
+    
+    // 修改計算殖利率的方法，以使用更新的數據
+    private func calculateDividendYield(withDividendPerShare dividend: Double? = nil, withFrequency frequency: Int? = nil) -> Double {
+        let totalInvestment = normalStocks.reduce(0.0) {
+            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
+        }
+        let totalAnnualDividend = calculateTotalAnnualDividend(
+            withDividendPerShare: dividend,
+            withFrequency: frequency
+        )
+        
+        return totalInvestment > 0 ? (totalAnnualDividend / totalInvestment) * 100 : 0
+    }
+    
+    // 其他方法保持不變
+    private func calculateAverageCost() -> Double? {
+        let totalInvestment = normalStocks.reduce(0.0) {
+            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
+        }
+        let totalShares = normalStocks.reduce(0) { $0 + $1.shares }
+        
+        return totalShares > 0 ? totalInvestment / Double(totalShares) : nil
     }
     
     private func purchaseDetailRow(for stock: Stock) -> some View {
+        // (保持原來的實現)
         VStack(alignment: .leading, spacing: 8) {
             GroupBox {
                 HStack {
@@ -195,30 +341,6 @@ struct NormalStockDetailView: View {
             .groupBoxStyle(TransparentGroupBox())
         }
         .padding(.vertical, 4)
-    }
-    
-    private func calculateAverageCost() -> Double? {
-        let totalInvestment = normalStocks.reduce(0.0) {
-            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
-        }
-        let totalShares = normalStocks.reduce(0) { $0 + $1.shares }
-        
-        return totalShares > 0 ? totalInvestment / Double(totalShares) : nil
-    }
-    
-    private func calculateTotalAnnualDividend() -> Double {
-        return normalStocks.reduce(0) {
-            $0 + (Double($1.shares) * $1.dividendPerShare * Double($1.frequency))
-        }
-    }
-    
-    private func calculateDividendYield() -> Double {
-        let totalInvestment = normalStocks.reduce(0.0) {
-            $0 + (Double($1.shares) * ($1.purchasePrice ?? 0))
-        }
-        let totalAnnualDividend = calculateTotalAnnualDividend()
-        
-        return totalInvestment > 0 ? (totalAnnualDividend / totalInvestment) * 100 : 0
     }
 }
 

@@ -339,7 +339,7 @@ struct ContentView: View {
         
         // 確保重置所有 UserDefaults 的值，包括「我的規劃」相關的數據
         // 這裡不需要逐一列出所有 key，因為使用者會自己重新建立規劃
-        if let bundleID = Bundle.main.bundleIdentifier {
+        if Bundle.main.bundleIdentifier != nil {
             let defaults = UserDefaults.standard
             let keys = defaults.dictionaryRepresentation().keys
             

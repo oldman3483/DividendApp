@@ -40,16 +40,41 @@ class EnhancedLocalStockService {
     /// 獲取股利資訊
     func getTaiwanStockDividend(symbol: String) async -> Double? {
         do {
-            // 從 API 獲取股息資料
-            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            // 從 API 獲取股息資料，添加重試邏輯
+            var retryCount = 0
+            let maxRetries = 2
             
-            // 使用 SQLDataProcessor 處理資料
-            let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
-            
-            return dividendPerShare
-        } catch {
-            print("從 API 獲取股息資料失敗，使用本地數據作為備用: \(error.localizedDescription)")
-            // 使用本地服務作為備用
+            while retryCount <= maxRetries {
+                do {
+                    let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+                    
+                    // 使用 SQLDataProcessor 處理資料
+                    let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+                    
+                    // 如果股利為0，可能是資料有誤，使用本地資料作為備用
+                    if dividendPerShare <= 0 && retryCount < maxRetries {
+                        print("警告：API返回的股利為0，重試...")
+                        retryCount += 1
+                        continue
+                    }
+                    
+                    return dividendPerShare
+                } catch {
+                    print("嘗試 #\(retryCount + 1) 獲取股息資料失敗: \(error.localizedDescription)")
+                    retryCount += 1
+                    
+                    // 如果已重試到最大次數，跳出循環
+                    if retryCount > maxRetries {
+                        break
+                    }
+                    
+                    // 添加延遲
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            }
+
+            // 所有嘗試失敗，使用本地服務作為備用
+            print("所有嘗試獲取股息資料失敗，使用本地數據")
             return await localService.getTaiwanStockDividend(symbol: symbol)
         }
     }
@@ -57,16 +82,41 @@ class EnhancedLocalStockService {
     /// 獲取股利頻率
     func getTaiwanStockFrequency(symbol: String) async -> Int? {
         do {
-            // 從 API 獲取股息資料
-            let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+            // 從 API 獲取股息資料，添加重試邏輯
+            var retryCount = 0
+            let maxRetries = 2
             
-            // 使用 SQLDataProcessor 處理資料
-            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+            while retryCount <= maxRetries {
+                do {
+                    let dividendResponse = try await apiService.getDividendData(symbol: symbol)
+                    
+                    // 使用 SQLDataProcessor 處理資料
+                    let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+                    
+                    // 驗證結果
+                    if frequency == 0 && retryCount < maxRetries {
+                        print("警告：計算出的頻率為0，重試...")
+                        retryCount += 1
+                        continue
+                    }
+                    
+                    return frequency
+                } catch {
+                    print("嘗試 #\(retryCount + 1) 獲取頻率資料失敗: \(error.localizedDescription)")
+                    retryCount += 1
+                    
+                    // 如果已重試到最大次數，跳出循環
+                    if retryCount > maxRetries {
+                        break
+                    }
+                    
+                    // 添加延遲
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                }
+            }
             
-            return frequency
-        } catch {
-            print("從 API 獲取股息頻率失敗，使用本地數據作為備用: \(error.localizedDescription)")
-            // 使用本地服務作為備用
+            // 所有嘗試失敗，使用本地服務作為備用
+            print("所有嘗試獲取頻率資料失敗，使用本地數據")
             return await localService.getTaiwanStockFrequency(symbol: symbol)
         }
     }

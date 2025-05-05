@@ -11,6 +11,10 @@ struct StockSummaryRow: View {
     let stockInfo: WeightedStockInfo
     let isEditing: Bool
     
+    @State private var updatedDividendPerShare: Double?
+    @State private var updatedFrequency: Int?
+    @State private var isLoadingDividendInfo: Bool = true
+    
     private var regularInvestmentCount: Int {
         stockInfo.details.filter { $0.regularInvestment != nil }.count
     }
@@ -56,7 +60,19 @@ struct StockSummaryRow: View {
                             Text("加權股利")
                                 .font(.caption)
                                 .foregroundColor(.gray)
-                            Text("$\(String(format: "%.2f", stockInfo.weightedDividendPerShare))")
+                            
+                            if isLoadingDividendInfo {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.5)
+                                        .frame(width: 10, height: 10)
+                                    Text("更新中...")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.gray)
+                                }
+                            } else {
+                                Text("$\(String(format: "%.2f", updatedDividendPerShare ?? stockInfo.weightedDividendPerShare))")
+                            }
                         }
                         
                         Spacer()
@@ -65,13 +81,25 @@ struct StockSummaryRow: View {
                             Text("年化股利")
                                 .font(.caption)
                                 .foregroundColor(.gray)
-                            Text("$\(String(format: "%.0f", stockInfo.calculateTotalAnnualDividend()))")
-                                .foregroundColor(.green)
+                            
+                            if isLoadingDividendInfo {
+                                HStack {
+                                    ProgressView()
+                                        .scaleEffect(0.5)
+                                        .frame(width: 10, height: 10)
+                                    Text("更新中...")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.gray)
+                                }
+                            } else {
+                                Text("$\(String(format: "%.0f", calculateUpdatedTotalAnnualDividend()))")
+                                    .foregroundColor(.green)
+                            }
                         }
                     }
                 }
             }
-                        
+            
             if !isEditing {
                 Image(systemName: "chevron.right")
                     .foregroundColor(.gray)
@@ -79,9 +107,63 @@ struct StockSummaryRow: View {
             }
         }
         .padding(.vertical, 4)
+        .task {
+            // 視圖顯示時載入最新資料
+            if !hasRegularInvestment {
+                await loadUpdatedDividendInfo()
+            }
+        }
     }
-    
-    private var hasRegularInvestment: Bool {
-        stockInfo.details.contains { $0.regularInvestment != nil }
+    private func loadUpdatedDividendInfo() async {
+            isLoadingDividendInfo = true
+            
+            do {
+                // 使用 APIService 和 SQLDataProcessor 獲取最新資料
+                let dividendResponse = try await APIService.shared.getDividendData(symbol: stockInfo.symbol)
+                
+                // 使用 SQLDataProcessor 處理資料
+                let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+                let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+                
+                // 更新界面
+                await MainActor.run {
+                    self.updatedDividendPerShare = dividendPerShare
+                    self.updatedFrequency = frequency
+                    self.isLoadingDividendInfo = false
+                }
+                
+                print("成功從 API 獲取股息資料: 頻率=\(frequency), 每股股息=\(dividendPerShare)")
+            } catch {
+                print("從 API 獲取股息資料失敗: \(error.localizedDescription)")
+                
+                // 如果 API 獲取失敗，使用本地服務作為備用
+                let localService = LocalStockService()
+                
+                if let dividend = await localService.getTaiwanStockDividend(symbol: stockInfo.symbol) {
+                    await MainActor.run {
+                        self.updatedDividendPerShare = dividend
+                    }
+                }
+                if let freq = await localService.getTaiwanStockFrequency(symbol: stockInfo.symbol) {
+                    await MainActor.run {
+                        self.updatedFrequency = freq
+                    }
+                }
+                
+                await MainActor.run {
+                    self.isLoadingDividendInfo = false
+                }
+            }
+        }
+        
+        // 計算更新後的年化股利
+        private func calculateUpdatedTotalAnnualDividend() -> Double {
+            let dividend = updatedDividendPerShare ?? stockInfo.weightedDividendPerShare
+            let frequency = updatedFrequency ?? stockInfo.frequency
+            return Double(stockInfo.totalShares) * dividend * Double(frequency)
+        }
+        
+        private var hasRegularInvestment: Bool {
+            stockInfo.details.contains { $0.regularInvestment != nil }
+        }
     }
-}

@@ -81,6 +81,10 @@ class APIService {
             // 添加打印來追蹤API調用
             print("正在獲取股利資料，股票代號: \(symbol), 路徑: \(path)")
             
+            // 增加連接超時時間
+            var request = URLRequest(url: URL(string: "\(baseURL)/\(path)")!)
+            request.timeoutInterval = 20.0 // 增加到20秒
+            
             // 修改：添加重試機制
             let maxRetries = 3
             var retryCount = 0
@@ -91,6 +95,12 @@ class APIService {
                     // 修改這裡，直接使用 path 而不是使用 queryItems
                     let response: DividendResponse = try await get(path: path)
                     print("API返回：\(response.data.count) 條股利記錄")
+                    
+                    // 增加資料驗證
+                    if response.data.isEmpty {
+                        print("警告：API返回的資料為空")
+                    }
+                    
                     return response
                 } catch let error {
                     lastError = error
@@ -99,7 +109,7 @@ class APIService {
                     
                     // 添加延遲重試
                     if retryCount < maxRetries {
-                        try await Task.sleep(nanoseconds: UInt64(1_000_000_000)) // 延遲1秒
+                        try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(retryCount)) * 1_000_000_000)) // 延遲1秒
                     }
                 }
             }
@@ -113,10 +123,19 @@ class APIService {
             if let apiError = error as? APIError {
                 throw apiError
             } else if let urlError = error as? URLError {
-                throw APIError(code: urlError.code.rawValue, message: "連接服務器失敗: \(urlError.localizedDescription)")
+                switch urlError.code {
+                case .timedOut:
+                    throw APIError(code: 3, message: "連接超時，請檢查網絡連接或稍後再試")
+                case .notConnectedToInternet:
+                    throw APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置")
+                case .cannotFindHost, .cannotConnectToHost:
+                    throw APIError(code: 4, message: "無法連接到服務器，請檢查服務器地址是否正確")
+                default:
+                    throw APIError(code: urlError.code.rawValue, message: "網絡錯誤: \(urlError.localizedDescription)")
+                }
             }
             
-            throw APIError(code: 1, message: "網絡錯誤: \(error.localizedDescription)")
+            throw APIError(code: 1, message: "獲取股利數據失敗: \(error.localizedDescription)")
         }
     }
     

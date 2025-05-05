@@ -35,8 +35,6 @@ struct OverviewView: View {
                     // 投資摘要區塊
                     investmentSummaryCard
                     
-                    // 投資規劃區塊
-                    goalCalculatorCard
                 }
                 .padding(.horizontal)
                 .padding(.top, 10)
@@ -262,34 +260,34 @@ struct OverviewView: View {
     }
     
     // 投資規劃卡片 - 與其他卡片一致的樣式
-    private var goalCalculatorCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("投資目標規劃器")
-                    .font(.headline)
-                
-                Text("設定您的投資目標，我們將協助您計算所需的投資步驟")
-                    .font(.system(size: 14))
-                    .foregroundColor(.gray)
-                
-                NavigationLink(destination: GoalCalculatorView()) {
-                    HStack {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .foregroundColor(.white)
-                        Text("開始設定我的投資規劃")
-                            .font(.system(size: 15))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
-                    .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding()
-        }
-        .groupBoxStyle(TransparentGroupBox())
-    }
+//    private var goalCalculatorCard: some View {
+//        GroupBox {
+//            VStack(alignment: .leading, spacing: 15) {
+//                Text("投資目標規劃器")
+//                    .font(.headline)
+//                
+//                Text("設定您的投資目標，我們將協助您計算所需的投資步驟")
+//                    .font(.system(size: 14))
+//                    .foregroundColor(.gray)
+//                
+//                NavigationLink(destination: GoalCalculatorView()) {
+//                    HStack {
+//                        Image(systemName: "chart.line.uptrend.xyaxis")
+//                            .foregroundColor(.white)
+//                        Text("開始設定我的投資規劃")
+//                            .font(.system(size: 15))
+//                    }
+//                    .frame(maxWidth: .infinity)
+//                    .padding(.vertical, 12)
+//                    .background(Color.blue)
+//                    .cornerRadius(8)
+//                }
+//                .buttonStyle(PlainButtonStyle())
+//            }
+//            .padding()
+//        }
+//        .groupBoxStyle(TransparentGroupBox())
+//    }
     
     // MARK: - 輔助視圖
     

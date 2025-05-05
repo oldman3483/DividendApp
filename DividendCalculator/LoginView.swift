@@ -100,8 +100,7 @@ struct LoginView: View {
         case .success(let authorization):
             if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
                 // 更安全的用戶識別方式
-                guard let identityToken = appleIDCredential.identityToken,
-                      let identityTokenString = String(data: identityToken, encoding: .utf8) else {
+                guard appleIDCredential.identityToken != nil else {
                     errorMessage = "無法獲取身份驗證令牌"
                     isShowingAlert = true
                     return

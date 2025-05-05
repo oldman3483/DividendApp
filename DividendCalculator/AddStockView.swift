@@ -288,7 +288,7 @@ struct AddStockView: View {
         isFrequencyLoading = true
         
         // 使用 EnhancedLocalStockService 來獲取股息資料
-        let enhancedService = EnhancedLocalStockService.shared
+        _ = EnhancedLocalStockService.shared
         
         // 嘗試從 API 獲取股息資料
         do {
