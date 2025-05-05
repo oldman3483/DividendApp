@@ -32,6 +32,9 @@ struct GoalCalculatorView: View {
     @State private var showResults = false
     @State private var isCalculating = false
     
+    @State private var scrollToResults = false
+
+    
     // 投資頻率選項
     private let frequencyOptions = [
         (1, "每年"),
@@ -44,28 +47,45 @@ struct GoalCalculatorView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // 股票選擇區域
-                    stockSelectionView
-                    
-                    // 目標設置區域
-                    goalSettingView
-                    
-                    // 計算按鈕
-                    calculateButton
-                    
-                    // 結果區域
-                    if showResults {
-                        // 投資結果卡片
-                        investmentResultCards
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // 股票選擇區域
+                        stockSelectionView
                         
-                        // 投資預測卡片
-                        investmentForecastCards
+                        // 目標設置區域
+                        goalSettingView
                         
+                        // 計算按鈕
+                        calculateButton
+                        
+                        // 結果區域
+                        if showResults {
+                            // 投資結果卡片
+                            VStack {
+                                investmentResultCards
+                                    .id("resultSection") // 添加識別 ID
+                                
+                                // 投資預測卡片
+                                investmentForecastCards
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                            .animation(.easeInOut(duration: 0.5), value: showResults)
+                        }
+                    }
+                    .padding()
+                }
+                .onChange(of: scrollToResults) { _, newValue in
+                    if newValue {
+                        // 為了更平滑的體驗，添加延遲動畫
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeInOut(duration: 0.8)) {
+                                proxy.scrollTo("resultSection", anchor: .top)
+                                scrollToResults = false
+                            }
+                        }
                     }
                 }
-                .padding()
             }
             .background(Color.black)
             .navigationTitle("我的規劃")
@@ -595,6 +615,9 @@ struct GoalCalculatorView: View {
             self.projectionData = projection
             self.showResults = true
             self.isCalculating = false
+            
+            // 觸發滾動到結果區域
+            self.scrollToResults = true
             
             // 計算目標年份（當前年份 + 投資年限）
             let currentYear = Calendar.current.component(.year, from: Date())
