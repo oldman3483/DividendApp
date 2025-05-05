@@ -113,6 +113,8 @@ struct OverviewView: View {
                                 .foregroundColor(.white)
                             Text("建立我的規劃")
                                 .font(.system(size: 15))
+                                .foregroundColor(.white)
+
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -123,7 +125,7 @@ struct OverviewView: View {
                 }
                 .padding()
             } else {
-                // 已設定目標時的視圖 (與原先相同)
+                // 已設定目標時的視圖
                 VStack(alignment: .leading, spacing: 15) {
                     HStack {
                         Text("我的規劃")

@@ -14,6 +14,8 @@ struct PortfolioSummarySection: View {
     let stockCount: Int
     let totalAnnualDividend: Double
     let totalInvestment: Double
+    let dailyChange: Double  // 添加當日損益
+    let dailyChangePercentage: Double  // 添加當日損益百分比
     
     var body: some View {
         Section {
@@ -39,6 +41,19 @@ struct PortfolioSummarySection: View {
                     Spacer()
                     Text("$\(String(format: "%.0f", totalAnnualDividend))")
                         .foregroundColor(.green)
+                }
+                
+                HStack {
+                    Text("當日損益")
+                        .foregroundColor(.white)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Text("$\(Int(dailyChange).formattedWithComma)")
+                            .foregroundColor(dailyChange >= 0 ? .green : .red)
+                        Text("(\(String(format: "%.2f", dailyChangePercentage))%)")
+                            .font(.caption)
+                            .foregroundColor(dailyChange >= 0 ? .green : .red)
+                    }
                 }
             }
         }
@@ -344,7 +359,9 @@ struct PortfolioView: View {
                     PortfolioSummarySection(
                         stockCount: getStockCount(),
                         totalAnnualDividend: calculateTotalAnnualDividend(),
-                        totalInvestment: calculateTotalInvestment()
+                        totalInvestment: calculateTotalInvestment(),
+                        dailyChange: calculateDailyChange().0,
+                        dailyChangePercentage: calculateDailyChange().1
                     )
                     
                     if getRegularInvestments().isEmpty && getNormalStocks().isEmpty {
@@ -430,6 +447,46 @@ struct PortfolioView: View {
                 bankId: bankId
             )
         }
+    }
+    
+    // 計算當日損益及百分比 - 簡化版本
+    private func calculateDailyChange() -> (Double, Double) {
+        // 獲取銀行的股票
+        let bankStocks = stocks.filter { $0.bankId == bankId }
+        
+        // 模擬當日損益 (在實際場景中，你應該使用真實的股價數據)
+        var totalChange: Double = 0
+        var totalValue: Double = 0
+        
+        for stock in bankStocks {
+            // 計算模擬的當日漲跌百分比 (-1.5% 到 2% 之間)
+            let changeRate = Double.random(in: -0.015...0.02)
+            
+            // 獲取模擬的當前股價 (基於購買價格加上隨機波動)
+            let currentPrice = (stock.purchasePrice ?? 100) * (1 + Double.random(in: -0.1...0.2))
+            
+            // 計算昨日股價
+            let yesterdayPrice = currentPrice / (1 + changeRate)
+            
+            // 計算總持股數
+            let normalShares = stock.shares
+            let regularShares = stock.regularInvestment?.transactions?
+                .filter { $0.isExecuted }
+                .reduce(0) { $0 + $1.shares } ?? 0
+            let totalShares = normalShares + regularShares
+            
+            // 計算當日變動金額
+            let stockChange = (currentPrice - yesterdayPrice) * Double(totalShares)
+            totalChange += stockChange
+            
+            // 累計市值 (用於計算百分比)
+            totalValue += yesterdayPrice * Double(totalShares)
+        }
+        
+        // 計算變動百分比
+        let changePercentage = totalValue > 0 ? (totalChange / totalValue) * 100 : 0
+        
+        return (totalChange, changePercentage)
     }
 }
     
