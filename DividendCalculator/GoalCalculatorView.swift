@@ -84,48 +84,23 @@ struct GoalCalculatorView: View {
                         // 目標設置區域
                         goalSettingView
                         
-                        // 計算按鈕
-                        if onSave != nil {
-                            Button(action: {
-                                calculateRequiredInvestment()
-                                if showResults {
-                                    showingSaveAlert = true
-                                }
-                            }) {
-                                Text(showResults ? "保存規劃" : "計算所需投資金額")
-                                    .font(.headline)
+                        // 計算按鈕 - 不管是否有onSave，都保留原有的計算按鈕
+                        Button(action: {
+                            calculateRequiredInvestment()
+                        }) {
+                            Text("計算所需投資金額")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.blue)
+                                .cornerRadius(10)
+                        }
+                        .disabled(isCalculating)
+                        .overlay {
+                            if isCalculating {
+                                ProgressView()
                                     .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color.blue)
-                                    .cornerRadius(10)
-                            }
-                            .disabled(isCalculating)
-                            .overlay {
-                                if isCalculating {
-                                    ProgressView()
-                                        .foregroundColor(.white)
-                                }
-                            }
-                        } else {
-                            // 原有計算按鈕
-                            Button(action: {
-                                calculateRequiredInvestment()
-                            }) {
-                                Text("計算所需投資金額")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
-                                    .background(Color.blue)
-                                    .cornerRadius(10)
-                            }
-                            .disabled(isCalculating)
-                            .overlay {
-                                if isCalculating {
-                                    ProgressView()
-                                        .foregroundColor(.white)
-                                }
                             }
                         }
                         
@@ -141,6 +116,22 @@ struct GoalCalculatorView: View {
                             }
                             .transition(.opacity.combined(with: .move(edge: .top)))
                             .animation(.easeInOut(duration: 0.5), value: showResults)
+                            
+                            // 保存按鈕 - 只在有onSave回調且已顯示結果時顯示
+                            if onSave != nil {
+                                Button(action: {
+                                    showingSaveAlert = true
+                                }) {
+                                    Text("保存規劃")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(Color.green)
+                                        .cornerRadius(10)
+                                }
+                                .padding(.top, 20)
+                            }
                         }
                     }
                     .padding()
@@ -161,7 +152,7 @@ struct GoalCalculatorView: View {
             .navigationTitle("我的規劃")
             .navigationBarTitleDisplayMode(.inline)
             
-            // 新增：導航欄取消按
+            // 導航欄取消按鈕
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     if onSave != nil {
@@ -172,7 +163,6 @@ struct GoalCalculatorView: View {
                 }
             }
         }
-        
         .onAppear {
             // 添加清除數據的通知觀察者
             clearDataObserver = NotificationCenter.default.addObserver(
