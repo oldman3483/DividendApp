@@ -92,7 +92,7 @@ struct OverviewView: View {
         .groupBoxStyle(TransparentGroupBox())
     }
     
-    // 目標規劃卡片 - 統一使用 GroupBox
+    // 目標規劃區塊 - 修改後使用卡片方式呈現
     private var goalPlanningCard: some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 15) {
@@ -107,50 +107,10 @@ struct OverviewView: View {
                     }
                 }
                 
-                if let firstPlan = getFirstPlan() {
-                    // 顯示第一個規劃的預覽
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text(firstPlan.title)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            Text("\(firstPlan.targetYear)年目標")
-                                .font(.system(size: 14))
-                                .foregroundColor(.blue)
-                        }
-                        
-                        // 進度條
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 15)
-                                    .cornerRadius(7.5)
-                                
-                                Rectangle()
-                                    .fill(Color.blue)
-                                    .frame(width: geometry.size.width * CGFloat(firstPlan.completionPercentage / 100), height: 15)
-                                    .cornerRadius(7.5)
-                            }
-                        }
-                        .frame(height: 15)
-                        
-                        HStack {
-                            Text("$\(Int(firstPlan.currentAmount).formattedWithComma) / $\(Int(firstPlan.targetAmount).formattedWithComma)")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                            
-                            Text("\(Int(firstPlan.completionPercentage))%")
-                                .font(.system(size: 14))
-                                .foregroundColor(.blue)
-                        }
-                    }
-                } else {
+                // 取得前三個規劃來呈現
+                let plans = getRecentPlans(limit: 3)
+                
+                if plans.isEmpty {
                     // 空狀態視圖
                     VStack(alignment: .center, spacing: 15) {
                         Text("尚未設定投資目標")
@@ -178,11 +138,80 @@ struct OverviewView: View {
                         .padding(.top, 10)
                     }
                     .padding()
+                } else {
+                    // 橫向滾動的規劃卡片
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(plans) { plan in
+                                PlanCardPreview(plan: plan)
+                            }
+                        }
+                    }
                 }
             }
             .padding()
         }
         .groupBoxStyle(TransparentGroupBox())
+    }
+
+    // 獲取最近的規劃
+    private func getRecentPlans(limit: Int) -> [InvestmentPlan] {
+        if let planData = UserDefaults.standard.data(forKey: "investmentPlans"),
+           let plans = try? JSONDecoder().decode([InvestmentPlan].self, from: planData) {
+            return Array(plans.prefix(limit))
+        }
+        return []
+    }
+
+    // 規劃卡片預覽 - 新增組件
+    struct PlanCardPreview: View {
+        let plan: InvestmentPlan
+        
+        var body: some View {
+            NavigationLink(destination: PlanningDetailView(plan: plan, onUpdate: { _ in })) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(plan.title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Text("\(plan.symbol)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    
+                    // 進度條
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(height: 10)
+                                .cornerRadius(5)
+                            
+                            Rectangle()
+                                .fill(Color.blue)
+                                .frame(width: geometry.size.width * CGFloat(plan.completionPercentage / 100), height: 10)
+                                .cornerRadius(5)
+                        }
+                    }
+                    .frame(height: 10)
+                    
+                    HStack {
+                        Text("$\(Int(plan.currentAmount).formattedWithComma) / $\(Int(plan.targetAmount).formattedWithComma)")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        
+                        Spacer()
+                        
+                        Text("\(Int(plan.completionPercentage))%")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(12)
+                .frame(width: 170, height: 110)
+                .cardBackground()
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
     }
 
     // 獲取第一個規劃的方法
