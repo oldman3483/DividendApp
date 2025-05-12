@@ -9,10 +9,19 @@ import SwiftUI
 import Charts
 
 struct GoalCalculatorView: View {
+    
+    // 保存規劃的回調
+    var onSave: ((InvestmentPlan) -> Void)?
+    
+    
     // 股票選擇
     @State private var selectedSymbol = "0050" // 默認0050
     @State private var clearDataObserver: NSObjectProtocol?
-
+    @State private var planTitle: String = "我的投資規劃"  // 規劃標題
+    @State private var showingSaveAlert = false  // 顯示保存對話框
+    
+    @Environment(\.dismiss) var dismiss
+    
     
     private let availableSymbols = [
         ("0050", "元大台灣50ETF"),
@@ -33,7 +42,7 @@ struct GoalCalculatorView: View {
     @State private var isCalculating = false
     
     @State private var scrollToResults = false
-
+    
     
     // 投資頻率選項
     private let frequencyOptions = [
@@ -50,6 +59,25 @@ struct GoalCalculatorView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 20) {
+                        
+                        if onSave != nil {
+                            GroupBox {
+                                VStack(alignment: .leading, spacing: 10) {
+                                    Text("規劃名稱")
+                                        .font(.headline)
+                                    
+                                    TextField("輸入規劃名稱", text: $planTitle)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 10)
+                                        .background(Color(white: 0.2))
+                                        .cornerRadius(8)
+                                        .foregroundColor(.white)
+                                }
+                                .padding()
+                            }
+                            .groupBoxStyle(TransparentGroupBox())
+                        }
+                        
                         // 股票選擇區域
                         stockSelectionView
                         
@@ -57,7 +85,49 @@ struct GoalCalculatorView: View {
                         goalSettingView
                         
                         // 計算按鈕
-                        calculateButton
+                        if onSave != nil {
+                            Button(action: {
+                                calculateRequiredInvestment()
+                                if showResults {
+                                    showingSaveAlert = true
+                                }
+                            }) {
+                                Text(showResults ? "保存規劃" : "計算所需投資金額")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.blue)
+                                    .cornerRadius(10)
+                            }
+                            .disabled(isCalculating)
+                            .overlay {
+                                if isCalculating {
+                                    ProgressView()
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        } else {
+                            // 原有計算按鈕
+                            Button(action: {
+                                calculateRequiredInvestment()
+                            }) {
+                                Text("計算所需投資金額")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Color.blue)
+                                    .cornerRadius(10)
+                            }
+                            .disabled(isCalculating)
+                            .overlay {
+                                if isCalculating {
+                                    ProgressView()
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        }
                         
                         // 結果區域
                         if showResults {
@@ -90,7 +160,19 @@ struct GoalCalculatorView: View {
             .background(Color.black)
             .navigationTitle("我的規劃")
             .navigationBarTitleDisplayMode(.inline)
+            
+            // 新增：導航欄取消按
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    if onSave != nil {
+                        Button("取消") {
+                            dismiss()
+                        }
+                    }
+                }
+            }
         }
+        
         .onAppear {
             // 添加清除數據的通知觀察者
             clearDataObserver = NotificationCenter.default.addObserver(
@@ -107,6 +189,42 @@ struct GoalCalculatorView: View {
                 NotificationCenter.default.removeObserver(observer)
             }
         }
+        .alert("保存規劃", isPresented: $showingSaveAlert) {
+            Button("取消", role: .cancel) { }
+            Button("保存") {
+                saveCurrentPlan()
+            }
+        } message: {
+            Text("確定要保存這個投資規劃嗎？")
+        }
+    }
+
+    private func saveCurrentPlan() {
+        guard let goalAmountValue = Double(goalAmount), goalAmountValue > 0,
+              !planTitle.isEmpty else {
+            return
+        }
+        
+        let currentYear = Calendar.current.component(.year, from: Date())
+        let targetYear = currentYear + investmentYears
+        
+        // 創建新的投資規劃
+        let newPlan = InvestmentPlan(
+            title: planTitle,
+            targetAmount: goalAmountValue,
+            targetYear: targetYear,
+            symbol: selectedSymbol,
+            investmentYears: investmentYears,
+            investmentFrequency: investmentFrequency,
+            requiredAmount: requiredAmount,
+            projectionData: projectionData
+        )
+        
+        // 保存規劃
+        onSave?(newPlan)
+        
+        // 關閉視圖
+        dismiss()
     }
     
     // MARK: - 子視圖
@@ -400,187 +518,6 @@ struct GoalCalculatorView: View {
         .groupBoxStyle(TransparentGroupBox())
     }
     
-    // 計算按鈕
-    private var calculateButton: some View {
-        Button(action: {
-            calculateRequiredInvestment()
-        }) {
-            Text("計算所需投資金額")
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.blue)
-                .cornerRadius(10)
-        }
-        .disabled(isCalculating)
-        .overlay {
-            if isCalculating {
-                ProgressView()
-                    .foregroundColor(.white)
-            }
-        }
-    }
-    
-//    // 結果視圖
-//    private var resultsView: some View {
-//        VStack(spacing: 20) {
-//            // 所需投資金額
-//            GroupBox {
-//                VStack(alignment: .leading, spacing: 15) {
-//                    Text("計算結果")
-//                        .font(.headline)
-//                        .frame(maxWidth: .infinity, alignment: .leading)
-//                    
-//                    VStack(alignment: .center, spacing: 10) {
-//                        Text("達成目標需要每\(getFrequencyText())投入")
-//                            .font(.system(size: 16))
-//                            .foregroundColor(.gray)
-//                            .frame(maxWidth: .infinity, alignment: .center)
-//                        
-//                        Text("$\(Int(requiredAmount).formattedWithComma)")
-//                            .font(.system(size: 30, weight: .bold))
-//                            .foregroundColor(.blue)
-//                            .frame(maxWidth: .infinity, alignment: .center)
-//                    }
-//                    .padding(.vertical, 10)
-//                    
-//                    // 小結
-//                    VStack(alignment: .leading, spacing: 5) {
-//                        Text("總投入金額：$\(Int(requiredAmount * Double(investmentFrequency * investmentYears)).formattedWithComma)")
-//                            .font(.system(size: 14))
-//                            .foregroundColor(.gray)
-//                        
-//                        Text("預期報酬：$\(Int(Double(goalAmount) ?? 0 - requiredAmount * Double(investmentFrequency * investmentYears)).formattedWithComma)")
-//                            .font(.system(size: 14))
-//                            .foregroundColor(.green)
-//                    }
-//                    .padding(.top, 10)
-//                }
-//                .padding()
-//            }
-//            .groupBoxStyle(TransparentGroupBox())
-//            
-//            // 增長預測圖表
-//            GroupBox {
-//                VStack(alignment: .leading, spacing: 15) {
-//                    Text("投資增長預測")
-//                        .font(.headline)
-//                        .frame(maxWidth: .infinity, alignment: .leading)
-//                    
-//                    // 圖表
-//                    Chart {
-//                        ForEach(projectionData) { point in
-//                            LineMark(
-//                                x: .value("年", point.year),
-//                                y: .value("金額", point.amount)
-//                            )
-//                            .foregroundStyle(.blue)
-//                        }
-//                        
-//                        ForEach(projectionData) { point in
-//                            LineMark(
-//                                x: .value("年", point.year),
-//                                y: .value("本金", point.principal)
-//                            )
-//                            .foregroundStyle(.gray)
-//                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-//                        }
-//                        
-//                        if let goalAmountValue = Double(goalAmount) {
-//                            RuleMark(y: .value("目標", goalAmountValue))
-//                                .foregroundStyle(.green)
-//                                .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-//                                .annotation(position: .leading) {
-//                                    Text("目標")
-//                                        .font(.caption)
-//                                        .foregroundColor(.green)
-//                                }
-//                        }
-//                    }
-//                    .frame(height: 250)
-//                    .chartYAxis {
-//                        AxisMarks(position: .leading) { value in
-//                            if let amount = value.as(Double.self) {
-//                                AxisValueLabel {
-//                                    Text("$\(Int(amount).formattedWithComma)")
-//                                        .font(.system(size: 10))
-//                                        .foregroundColor(.gray)
-//                                }
-//                            }
-//                        }
-//                    }
-//                    .chartXAxis {
-//                        AxisMarks { value in
-//                            if let year = value.as(Double.self), year.truncatingRemainder(dividingBy: 1) == 0 {
-//                                AxisValueLabel {
-//                                    Text("\(Int(year))年")
-//                                        .font(.system(size: 10))
-//                                        .foregroundColor(.gray)
-//                                }
-//                            }
-//                        }
-//                    }
-//                    
-//                    // 圖例
-//                    HStack(spacing: 20) {
-//                        HStack(spacing: 5) {
-//                            Rectangle()
-//                                .fill(.blue)
-//                                .frame(width: 20, height: 2)
-//                            Text("總資產")
-//                                .font(.caption)
-//                                .foregroundColor(.gray)
-//                        }
-//                        
-//                        HStack(spacing: 5) {
-//                            Rectangle()
-//                                .fill(.gray)
-//                                .frame(width: 20, height: 2)
-//                            Text("本金")
-//                                .font(.caption)
-//                                .foregroundColor(.gray)
-//                        }
-//                        
-//                        HStack(spacing: 5) {
-//                            Rectangle()
-//                                .fill(.green)
-//                                .frame(width: 20, height: 2)
-//                            Text("目標金額")
-//                                .font(.caption)
-//                                .foregroundColor(.gray)
-//                        }
-//                    }
-//                    .padding(.top, 10)
-//                }
-//                .padding()
-//            }
-//            .groupBoxStyle(TransparentGroupBox())
-//            
-//            // 注意事項
-//            GroupBox {
-//                VStack(alignment: .leading, spacing: 10) {
-//                    Text("注意事項")
-//                        .font(.headline)
-//                        .frame(maxWidth: .infinity, alignment: .leading)
-//                    
-//                    Text("• 此計算基於歷史平均報酬率，實際投資報酬可能有所不同")
-//                        .font(.system(size: 14))
-//                        .foregroundColor(.gray)
-//                    
-//                    Text("• 計算假設報酬率平均分布，未考慮市場波動")
-//                        .font(.system(size: 14))
-//                        .foregroundColor(.gray)
-//                    
-//                    Text("• 投資涉及風險，過去的表現不代表未來的結果")
-//                        .font(.system(size: 14))
-//                        .foregroundColor(.gray)
-//                }
-//                .padding()
-//            }
-//            .groupBoxStyle(TransparentGroupBox())
-//        }
-//    }
     
     // MARK: - 業務邏輯
     

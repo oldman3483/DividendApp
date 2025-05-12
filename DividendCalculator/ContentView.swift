@@ -88,28 +88,6 @@ struct ContentView: View {
                 searchBar.zIndex(1)
                 mainContent
             }
-//            // 離線指示器
-//            if showOfflineIndicator {
-//                VStack {
-//                    HStack {
-//                        Spacer()
-//                        HStack(spacing: 4) {
-//                            Image(systemName: "wifi.slash")
-//                                .foregroundColor(.white)
-//                            Text("離線模式")
-//                                .font(.caption)
-//                                .foregroundColor(.white)
-//                        }
-//                        .padding(.horizontal, 10)
-//                        .padding(.vertical, 5)
-//                        .background(Color.gray.opacity(0.8))
-//                        .cornerRadius(15)
-//                        .padding(.trailing, 10)
-//                        .padding(.top, 5)
-//                    }
-//                    Spacer()
-//                }
-//            }
         }
         .alert("登出確認", isPresented: $showingLogoutAlert) {
             Button("取消", role: .cancel) { }
@@ -308,17 +286,6 @@ struct ContentView: View {
     private func handleLogout() {
         // 設置登入狀態為 false
         isLoggedIn = false
-        
-        // 可以選擇是否清除資料
-        // 如果想要保留資料以便使用者再次登入時仍然可以看到他們的資料，則不需要清除
-        // 如果出於安全考慮需要清除資料，則取消下面的註解
-        
-        // stocks = []
-        // watchlist = []
-        // banks = []
-        // searchText = ""
-        
-        // 將登出訊息顯示在主控台（可選）
         print("使用者已登出")
     }
     // 重置所有數據
@@ -394,9 +361,6 @@ struct ContentView: View {
                 showOfflineIndicator = true
                 return
             }
-            
-            // 在這裡加載API數據
-            // ...
             
             // 暫時先加載本地數據
             loadLocalData()

@@ -100,16 +100,21 @@ struct AddBankView: View {
     }
     
     func addBank() {
-        // 使用新的驗證系統
-        let validationResult = FormValidator.validateBankName(bankName, existingBanks: banks)
+        let trimmedName = bankName.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        switch validationResult {
-        case .success:
-            let newBank = Bank(name: bankName)
-            banks.append(newBank)
-            dismiss()
-        case .failure(let message):
-            errorMessage = message
+        if trimmedName.isEmpty {
+            errorMessage = "銀行名稱不能為空"
+            return
         }
+        
+        if banks.contains(where: { $0.name == trimmedName }) {
+            errorMessage = "已存在相同名稱的銀行"
+            return
+        }
+        
+        // 通過驗證，新增銀行
+        let newBank = Bank(name: trimmedName)
+        banks.append(newBank)
+        dismiss()
     }
 }

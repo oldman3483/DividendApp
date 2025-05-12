@@ -64,100 +64,55 @@ class APIService {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = timeoutInterval // 設置更長的超時時間
         
-        // 添加認證頭（如需要）
-        // request.addValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        
         return try await performRequest(request)
     }
     
-    // APIService.swift 中修改的內容
     
     // MARK: - 獲取股利資料
     func getDividendData(symbol: String) async throws -> DividendResponse {
-        // 修改 path 的格式，確保股票代號前面添加 t_ 後面添加 _data
         let path = "get_t_\(symbol)_data"
+        print("正在獲取股利資料，股票代號: \(symbol), 路徑: \(path)")
         
-        do {
-            // 添加打印來追蹤API調用
-            print("正在獲取股利資料，股票代號: \(symbol), 路徑: \(path)")
-            
-            // 增加連接超時時間
-            var request = URLRequest(url: URL(string: "\(baseURL)/\(path)")!)
-            request.timeoutInterval = 20.0 // 增加到20秒
-            
-            // 修改：添加重試機制
-            let maxRetries = 3
-            var retryCount = 0
-            var lastError: Error? = nil
-            
-            while retryCount < maxRetries {
-                do {
-                    // 修改這裡，直接使用 path 而不是使用 queryItems
-                    let response: DividendResponse = try await get(path: path)
-                    print("API返回：\(response.data.count) 條股利記錄")
-                    
-                    // 增加資料驗證
-                    if response.data.isEmpty {
-                        print("警告：API返回的資料為空")
-                    }
-                    
-                    return response
-                } catch let error {
-                    lastError = error
-                    print("嘗試 #\(retryCount + 1) 失敗: \(error.localizedDescription)")
-                    retryCount += 1
-                    
-                    // 添加延遲重試
-                    if retryCount < maxRetries {
-                        try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(retryCount)) * 1_000_000_000)) // 延遲1秒
-                    }
+        // 使用重試機制
+        let maxRetries = 2
+        var lastError: Error? = nil
+        
+        for retry in 0...maxRetries {
+            do {
+                let response: DividendResponse = try await get(path: path)
+                print("API返回：\(response.data.count) 條股利記錄")
+                
+                if response.data.isEmpty {
+                    print("警告：API返回的資料為空")
+                }
+                
+                return response
+            } catch let error {
+                lastError = error
+                print("嘗試 #\(retry + 1) 失敗: \(error.localizedDescription)")
+                
+                if retry < maxRetries {
+                    // 重試延遲
+                    try await Task.sleep(nanoseconds: UInt64(1_000_000_000 * pow(2.0, Double(retry))))
                 }
             }
-            
-            // 所有重試失敗後，拋出最後一個錯誤
-            throw lastError ?? APIError(code: 1, message: "多次嘗試後仍無法連接")
-        } catch {
-            print("獲取股利資料失敗: \(error.localizedDescription)")
-            
-            // 增加更詳細的錯誤處理
-            if let apiError = error as? APIError {
-                throw apiError
-            } else if let urlError = error as? URLError {
-                switch urlError.code {
-                case .timedOut:
-                    throw APIError(code: 3, message: "連接超時，請檢查網絡連接或稍後再試")
-                case .notConnectedToInternet:
-                    throw APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置")
-                case .cannotFindHost, .cannotConnectToHost:
-                    throw APIError(code: 4, message: "無法連接到服務器，請檢查服務器地址是否正確")
-                default:
-                    throw APIError(code: urlError.code.rawValue, message: "網絡錯誤: \(urlError.localizedDescription)")
-                }
-            }
-            
-            throw APIError(code: 1, message: "獲取股利數據失敗: \(error.localizedDescription)")
         }
+        
+        // 所有重試失敗
+        throw lastError ?? APIError(code: 1, message: "多次嘗試後仍無法連接")
     }
     
     // MARK: - 執行請求
     private func performRequest<DiviModel: Decodable>(_ request: URLRequest) async throws -> DiviModel {
         do {
-            // 執行請求
             let (data, response) = try await URLSession.shared.data(for: request)
             
-            // 簡化日誌記錄
-            if let httpResponse = response as? HTTPURLResponse {
-                print("收到HTTP狀態碼: \(httpResponse.statusCode)")
-            }
-            
-            // 檢查響應狀態碼
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw APIError(code: 0, message: "無效的響應")
             }
             
             // 檢查狀態碼是否表示成功
             guard (200...299).contains(httpResponse.statusCode) else {
-                // 處理錯誤響應
                 return try handleErrorResponse(data: data, statusCode: httpResponse.statusCode)
             }
             
@@ -166,8 +121,7 @@ class APIService {
         } catch let error as APIError {
             throw error
         } catch let urlError as URLError {
-            // 更簡潔的URL錯誤處理
-            throw handleURLError(urlError)
+            throw handleRequestError(urlError)
         } catch {
             throw APIError(code: 0, message: "未知錯誤: \(error.localizedDescription)")
         }
@@ -195,18 +149,22 @@ class APIService {
         }
     }
     
-    // 處理URL錯誤
-    private func handleURLError(_ error: URLError) -> APIError {
-        switch error.code {
-        case .timedOut:
-            return APIError(code: 3, message: "請求超時，請檢查網絡連接或稍後再試")
-        case .notConnectedToInternet:
-            return APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置")
-        case .cannotFindHost, .cannotConnectToHost:
-            return APIError(code: 4, message: "無法連接到服務器，請檢查服務器是否在線")
-        default:
-            return APIError(code: error.code.rawValue, message: "網絡錯誤: \(error.localizedDescription)")
+    private func handleRequestError(_ error: Error) -> APIError {
+        if let apiError = error as? APIError {
+            return apiError
+        } else if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return APIError(code: 3, message: "請求超時，請檢查網絡連接或稍後再試")
+            case .notConnectedToInternet:
+                return APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置")
+            case .cannotFindHost, .cannotConnectToHost:
+                return APIError(code: 4, message: "無法連接到服務器，請檢查服務器是否在線")
+            default:
+                return APIError(code: urlError.code.rawValue, message: "網絡錯誤: \(urlError.localizedDescription)")
+            }
         }
+        return APIError(code: 0, message: "未知錯誤: \(error.localizedDescription)")
     }
     
     // 解碼響應數據

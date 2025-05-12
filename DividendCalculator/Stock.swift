@@ -269,33 +269,27 @@ struct Stock: Identifiable, Codable, Equatable {
     mutating func updateRegularInvestmentTransactions(stockService: LocalStockService) async {
         guard var regularInvestment = self.regularInvestment,
               regularInvestment.isActive else {
-            print("定期定額未啟用或不存在")
             return
         }
         
         // 獲取所有投資日期
         let investmentDates = regularInvestment.calculateInvestmentDates()
+        var transactions = regularInvestment.transactions ?? []
         
-        // 計算交易紀錄
-        var transactions: [RegularInvestmentTransaction] = regularInvestment.transactions ?? []
-        
+        // 添加新的交易記錄
         for date in investmentDates {
-            // 檢查此日期是否已經有交易紀錄
-            let existingTransaction = transactions.first { $0.date == date }
-            
-            // 如果這個日期還沒有交易紀錄，且日期不超過結束日期（如果有設定的話）
-            if existingTransaction == nil,
+            // 如果此日期還沒有交易紀錄，且日期不超過結束日期
+            if !transactions.contains(where: { $0.date == date }),
                regularInvestment.endDate.map({ date <= $0 }) ?? true,
                let price = await stockService.getStockPrice(symbol: self.symbol, date: date) {
                 let shares = Int(regularInvestment.amount / price)
-                let transaction = RegularInvestmentTransaction(
+                transactions.append(RegularInvestmentTransaction(
                     date: date,
                     amount: regularInvestment.amount,
                     shares: shares,
                     price: price,
                     isExecuted: date <= Date()
-                )
-                transactions.append(transaction)
+                ))
             }
         }
         

@@ -62,27 +62,30 @@ class CustomRangeMetricsService {
     
     // MARK: - 主要指標計算方法
     
+    // 添加通用的計算函數
+    private func calculateFilteredStocks(startDate: Date, endDate: Date) -> [Stock] {
+        return stocks.filter { $0.purchaseDate >= startDate && $0.purchaseDate <= endDate }
+    }
+
+    private func calculateExecutedTransactions(stock: Stock, startDate: Date, endDate: Date) -> [RegularInvestmentTransaction] {
+        return stock.regularInvestment?.transactions?
+            .filter { $0.isExecuted && $0.date >= startDate && $0.date <= endDate } ?? []
+    }
+    
     // 計算總投資成本
     private func calculateTotalInvestment(startDate: Date, endDate: Date) -> Double {
-        stocks
-            .filter { $0.purchaseDate >= startDate && $0.purchaseDate <= endDate }
-            .reduce(0) { total, stock in
-                // 一般持股投資成本
-                let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
-                
-                // 定期定額投資成本（已執行的交易且在時間範圍內）
-                let regularCost = stock.regularInvestment?.transactions?
-                    .filter {
-                        $0.isExecuted &&
-                        $0.date >= startDate &&
-                        $0.date <= endDate
-                    }
-                    .reduce(0) { sum, transaction in
-                        sum + transaction.amount
-                    } ?? 0
-                
-                return total + normalCost + regularCost
-            }
+        let relevantStocks = calculateFilteredStocks(startDate: startDate, endDate: endDate)
+        
+        return relevantStocks.reduce(0) { total, stock in
+            // 一般持股投資成本
+            let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
+            
+            // 定期定額投資成本
+            let regularCost = calculateExecutedTransactions(stock: stock, startDate: startDate, endDate: endDate)
+                .reduce(0) { sum, transaction in sum + transaction.amount }
+            
+            return total + normalCost + regularCost
+        }
     }
     
     // 計算年化股利

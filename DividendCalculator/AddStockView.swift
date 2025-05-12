@@ -282,93 +282,89 @@ struct AddStockView: View {
         }
     }
 
+    // 使用共用函數來處理API呼叫和錯誤處理
     private func loadStockData() async {
-        // 設置各個欄位的載入狀態
         isDividendLoading = true
         isFrequencyLoading = true
         
-        // 使用 EnhancedLocalStockService 來獲取股息資料
-        _ = EnhancedLocalStockService.shared
-        
-        // 嘗試從 API 獲取股息資料
-        do {
-            // 從 API 獲取股息資料
-            let dividendResponse = try await APIService.shared.getDividendData(symbol: initialSymbol)
-            
-            // 使用 SQLDataProcessor 處理資料
-            let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
-            let dividend = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
-            
-            // 更新 UI
-            await MainActor.run {
-                self.dividendPerShare = String(format: "%.2f", dividend)
-                self.frequency = frequency
-                
-                // 更新完成後關閉載入狀態
+        // 同步加載股息和頻率資料
+        async let dividendResult = loadDataFromAPI(
+            apiCall: { try await APIService.shared.getDividendData(symbol: initialSymbol) },
+            processData: { SQLDataProcessor.shared.calculateDividendPerShare(from: $0.data) },
+            backupCall: { await localStockService.getTaiwanStockDividend(symbol: initialSymbol) },
+            updateUI: { value in
+                self.dividendPerShare = String(format: "%.2f", value)
                 self.isDividendLoading = false
+            },
+            logSuccess: { "成功從API獲取股息: \($0)" },
+            logFailure: { "獲取股息失敗: \($0)" }
+        )
+        
+        async let frequencyResult = loadDataFromAPI(
+            apiCall: { try await APIService.shared.getDividendData(symbol: initialSymbol) },
+            processData: { SQLDataProcessor.shared.calculateDividendFrequency(from: $0.data) },
+            backupCall: { await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) },
+            updateUI: { value in
+                self.frequency = value
                 self.isFrequencyLoading = false
-            }
-            
-            print("成功從 API 獲取股息資料: 頻率=\(frequency), 每股股息=\(dividend)")
-        } catch {
-            print("從 API 獲取股息資料失敗: \(error.localizedDescription)")
-            
-            // 如果 API 獲取失敗，使用本地服務作為備用
-            if let dividend = await localStockService.getTaiwanStockDividend(symbol: initialSymbol) {
-                await MainActor.run {
-                    self.dividendPerShare = String(format: "%.2f", dividend)
-                    self.isDividendLoading = false
-                }
-            }
-            if let freq = await localStockService.getTaiwanStockFrequency(symbol: initialSymbol) {
-                await MainActor.run {
-                    self.frequency = freq
-                    self.isFrequencyLoading = false
-                }
-            }
-        }
+            },
+            logSuccess: { "成功從API獲取頻率: \($0)" },
+            logFailure: { "獲取頻率失敗: \($0)" }
+        )
+        
+        // 等待兩個非同步操作完成
+        _ = await (dividendResult, frequencyResult)
         
         // 載入股價資料
         await loadStockPrice()
     }
-    
+
     private func loadStockPrice() async {
         isPriceLoading = true
         
-        // 嘗試從 API 獲取股價資料
+        await loadDataFromAPI(
+            apiCall: { try await APIService.shared.getDividendData(symbol: initialSymbol) },
+            processData: { dividendResponse -> Double? in
+                let record = findNearestDividendRecord(records: dividendResponse.data, date: purchaseDate)
+                return record?.ex_dividend_reference_price
+            },
+            backupCall: { await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) },
+            updateUI: { value in
+                self.purchasePrice = String(format: "%.2f", value)
+                self.isPriceLoading = false
+            },
+            logSuccess: { "成功取得股價: \($0)" },
+            logFailure: { "獲取股價失敗: \($0)" }
+        )
+    }
+
+    // 通用的資料加載和錯誤處理函數
+    private func loadDataFromAPI<T, R>(
+        apiCall: () async throws -> T,
+        processData: (T) -> R?,
+        backupCall: () async -> R?,
+        updateUI: @escaping (R) -> Void,
+        logSuccess: (R) -> String,
+        logFailure: (String) -> String
+    ) async -> R? {
         do {
-            // 獲取符合日期的股價資料，可能需要查詢近期的收盤價
-            let dividendResponse = try await APIService.shared.getDividendData(symbol: initialSymbol)
-            
-            // 查找最近的除息價格
-            let relevantRecord = findNearestDividendRecord(records: dividendResponse.data, date: purchaseDate)
-            
-            if let record = relevantRecord, let referencePrice = record.ex_dividend_reference_price {
-                // 使用除息參考價作為股價基準
-                await MainActor.run {
-                    self.purchasePrice = String(format: "%.2f", referencePrice)
-                    self.isPriceLoading = false
-                }
-            } else {
-                // 如果找不到除息價格，使用本地服務
-                if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
-                    await MainActor.run {
-                        self.purchasePrice = String(format: "%.2f", price)
-                        self.isPriceLoading = false
-                    }
-                }
+            let response = try await apiCall()
+            if let result = processData(response) {
+                await MainActor.run { updateUI(result) }
+                print(logSuccess(result))
+                return result
             }
         } catch {
-            print("從 API 獲取股價資料失敗: \(error.localizedDescription)")
-            
-            // 如果 API 獲取失敗，使用本地服務作為備用
-            if let price = await localStockService.getStockPrice(symbol: initialSymbol, date: purchaseDate) {
-                await MainActor.run {
-                    self.purchasePrice = String(format: "%.2f", price)
-                    self.isPriceLoading = false
-                }
-            }
+            print(logFailure(error.localizedDescription))
         }
+        
+        // 使用本地服務作為備用
+        if let backupResult = await backupCall() {
+            await MainActor.run { updateUI(backupResult) }
+            return backupResult
+        }
+        
+        return nil
     }
     // 輔助方法：查找最接近指定日期的股利記錄
     private func findNearestDividendRecord(records: [DividendRecord], date: Date) -> DividendRecord? {

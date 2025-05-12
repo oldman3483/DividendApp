@@ -104,16 +104,6 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Button(action: {
-                        checkBackendStatus()
-                    }) {
-                        HStack {
-                            Image(systemName: "network")
-                                .foregroundColor(.blue)
-                            Text("檢查後端服務狀態")
-                        }
-                    }
-                    
                 } header: {
                     Text("通知與連線設定")
                 }
@@ -191,26 +181,6 @@ struct SettingsView: View {
                     .padding()
                     .background(Color.black.opacity(0.7))
                     .cornerRadius(10)
-            }
-        }
-    }
-    
-    private func checkBackendStatus() {
-        isTestingDb = true
-        testResultMessage = "正在檢查後端服務狀態..."
-        showTestResult = true
-        
-        let baseURL = "https://postgres-1-148949302162.asia-east1.run.app"
-        
-        let networkMonitor = NetworkMonitor()
-        networkMonitor.checkServerConnection(urlString: baseURL) { isConnected, message in
-            DispatchQueue.main.async {
-                if isConnected {
-                    testResultMessage = "後端服務正常響應，您可以嘗試連接資料庫"
-                } else {
-                    testResultMessage = "無法連接到後端服務: \(message ?? "未知錯誤")\n\n請確認服務器地址正確且服務正在運行"
-                }
-                isTestingDb = false
             }
         }
     }

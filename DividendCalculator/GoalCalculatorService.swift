@@ -69,9 +69,12 @@ class GoalCalculatorService {
 }
 
 // 增長數據點模型
-struct GrowthPoint: Identifiable {
+struct GrowthPoint: Identifiable, Codable {
     let id = UUID()
     let year: Double      // 年份（可以是小數，如0.25表示第1年的第1季）
     let amount: Double    // 總金額
     let principal: Double // 本金部分
+    enum CodingKeys: String, CodingKey {
+        case id, year, amount, principal
+    }
 }

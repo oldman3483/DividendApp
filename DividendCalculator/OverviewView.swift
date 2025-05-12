@@ -95,95 +95,104 @@ struct OverviewView: View {
     // 目標規劃卡片 - 統一使用 GroupBox
     private var goalPlanningCard: some View {
         GroupBox {
-            if targetAmount == nil || currentAmount == nil || targetYear == nil {
-                // 空狀態視圖
-                VStack(alignment: .center, spacing: 15) {
-                    Text("尚未設定投資目標")
+            VStack(alignment: .leading, spacing: 15) {
+                HStack {
+                    Text("我的規劃")
                         .font(.headline)
-                        .foregroundColor(.gray)
-                    
-                    Text("點擊下方按鈕開始設定您的投資規劃")
-                        .font(.subheadline)
-                        .foregroundColor(.gray.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                    
-                    NavigationLink(destination: GoalCalculatorView()) {
-                        HStack {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .foregroundColor(.white)
-                            Text("建立我的規劃")
-                                .font(.system(size: 15))
-                                .foregroundColor(.white)
-
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.blue)
-                        .cornerRadius(8)
+                    Spacer()
+                    NavigationLink(destination: PlanningListView()) {
+                        Text("查看全部")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
                     }
-                    .padding(.top, 10)
                 }
-                .padding()
-            } else {
-                // 已設定目標時的視圖
-                VStack(alignment: .leading, spacing: 15) {
-                    HStack {
-                        Text("我的規劃")
-                            .font(.headline)
-                        Spacer()
-                        NavigationLink(destination: GoalCalculatorView()) {
-                            Text("詳細規劃")
+                
+                if let firstPlan = getFirstPlan() {
+                    // 顯示第一個規劃的預覽
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text(firstPlan.title)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                            
+                            Text("\(firstPlan.targetYear)年目標")
+                                .font(.system(size: 14))
+                                .foregroundColor(.blue)
+                        }
+                        
+                        // 進度條
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(height: 15)
+                                    .cornerRadius(7.5)
+                                
+                                Rectangle()
+                                    .fill(Color.blue)
+                                    .frame(width: geometry.size.width * CGFloat(firstPlan.completionPercentage / 100), height: 15)
+                                    .cornerRadius(7.5)
+                            }
+                        }
+                        .frame(height: 15)
+                        
+                        HStack {
+                            Text("$\(Int(firstPlan.currentAmount).formattedWithComma) / $\(Int(firstPlan.targetAmount).formattedWithComma)")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                            
+                            Text("\(Int(firstPlan.completionPercentage))%")
                                 .font(.system(size: 14))
                                 .foregroundColor(.blue)
                         }
                     }
-                    
-                    // 進度條
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(height: 20)
-                                .cornerRadius(10)
-                            
-                            Rectangle()
-                                .fill(Color.blue)
-                                .frame(width: geometry.size.width * CGFloat((currentAmount ?? 0) / (targetAmount ?? 1)), height: 20)
-                                .cornerRadius(10)
-                        }
-                    }
-                    .frame(height: 20)
-                    
-                    HStack {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("目標金額")
-                                .font(.system(size: 14))
-                                .foregroundColor(.gray)
-                            Text("$\(Int(targetAmount ?? 0).formattedWithComma)")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
-                        }
+                } else {
+                    // 空狀態視圖
+                    VStack(alignment: .center, spacing: 15) {
+                        Text("尚未設定投資目標")
+                            .font(.headline)
+                            .foregroundColor(.gray)
                         
-                        Spacer()
+                        Text("點擊下方按鈕開始設定您的投資規劃")
+                            .font(.subheadline)
+                            .foregroundColor(.gray.opacity(0.8))
+                            .multilineTextAlignment(.center)
                         
-                        VStack(alignment: .trailing, spacing: 5) {
-                            Text("預計達成")
-                                .font(.system(size: 14))
-                                .foregroundColor(.gray)
-                            Text("\(targetYear ?? 0)年")
-                                .font(.system(size: 16))
-                                .foregroundColor(.white)
+                        NavigationLink(destination: GoalCalculatorView()) {
+                            HStack {
+                                Image(systemName: "chart.line.uptrend.xyaxis")
+                                    .foregroundColor(.white)
+                                Text("建立我的規劃")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(8)
                         }
+                        .padding(.top, 10)
                     }
-                    
-                    Text("已投資: $\(Int(currentAmount ?? 0).formattedWithComma)")
-                        .font(.system(size: 15))
-                        .foregroundColor(.green)
+                    .padding()
                 }
-                .padding()
             }
+            .padding()
         }
         .groupBoxStyle(TransparentGroupBox())
+    }
+
+    // 獲取第一個規劃的方法
+    private func getFirstPlan() -> InvestmentPlan? {
+        if let planData = UserDefaults.standard.data(forKey: "investmentPlans"),
+           let plans = try? JSONDecoder().decode([InvestmentPlan].self, from: planData),
+           let firstPlan = plans.first {
+            return firstPlan
+        }
+        return nil
     }
     
     // 我的庫存卡片 - 統一使用 GroupBox
@@ -261,35 +270,6 @@ struct OverviewView: View {
         .groupBoxStyle(TransparentGroupBox())
     }
     
-    // 投資規劃卡片 - 與其他卡片一致的樣式
-//    private var goalCalculatorCard: some View {
-//        GroupBox {
-//            VStack(alignment: .leading, spacing: 15) {
-//                Text("投資目標規劃器")
-//                    .font(.headline)
-//                
-//                Text("設定您的投資目標，我們將協助您計算所需的投資步驟")
-//                    .font(.system(size: 14))
-//                    .foregroundColor(.gray)
-//                
-//                NavigationLink(destination: GoalCalculatorView()) {
-//                    HStack {
-//                        Image(systemName: "chart.line.uptrend.xyaxis")
-//                            .foregroundColor(.white)
-//                        Text("開始設定我的投資規劃")
-//                            .font(.system(size: 15))
-//                    }
-//                    .frame(maxWidth: .infinity)
-//                    .padding(.vertical, 12)
-//                    .background(Color.blue)
-//                    .cornerRadius(8)
-//                }
-//                .buttonStyle(PlainButtonStyle())
-//            }
-//            .padding()
-//        }
-//        .groupBoxStyle(TransparentGroupBox())
-//    }
     
     // MARK: - 輔助視圖
     
