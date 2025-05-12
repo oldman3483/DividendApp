@@ -59,7 +59,7 @@ struct AddStockView: View {
         self.bankId = bankId
         self.isFromBankPortfolio = isFromBankPortfolio
         
-        // 修改這裡：優先使用傳入的 bankId
+        // 優先使用傳入的 bankId
         _selectedBankId = State(initialValue: bankId)
         
         let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames")?[0] ?? "自選清單1"
@@ -96,34 +96,31 @@ struct AddStockView: View {
                 }
                 
                 // 根據來源決定是否顯示選擇目的地區塊
-                if !isFromBankPortfolio {
-                    Section(header: Text("新增至")) {
-                        if !isRegularInvestment {
-                            Picker("選擇目標", selection: $selectedDestination) {
-                                ForEach(destinations, id: \.self) { destination in
-                                    Text(destination)
-                                }
+                Section(header: Text("新增至")) {
+                    if !isRegularInvestment {
+                        Picker("選擇目標", selection: $selectedDestination) {
+                            ForEach(destinations, id: \.self) { destination in
+                                Text(destination)
                             }
-                            .pickerStyle(SegmentedPickerStyle())
                         }
-                        
-                        if selectedDestination == "銀行" {
-                            Picker("選擇銀行", selection: $selectedBankId) {
-                                ForEach(banks) { bank in
-                                    Text(bank.name).tag(bank.id)
-                                }
+                        .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    if selectedDestination == "銀行" {
+                        Picker("選擇銀行", selection: $selectedBankId) {
+                            ForEach(banks) { bank in
+                                Text(bank.name).tag(bank.id)
                             }
-                        } else if !isRegularInvestment {
-                            let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
-                            Picker("選擇觀察清單", selection: $selectedWatchlist) {
-                                ForEach(watchlistNames, id: \.self) { listName in
-                                    Text(listName)
-                                }
+                        }
+                    } else if !isRegularInvestment {
+                        let watchlistNames = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
+                        Picker("選擇觀察清單", selection: $selectedWatchlist) {
+                            ForEach(watchlistNames, id: \.self) { listName in
+                                Text(listName)
                             }
                         }
                     }
                 }
-                
                 // 只在選擇"銀行"時或從銀行投資組合進入時顯示交易和股利資訊
                 if selectedDestination == "銀行" || isFromBankPortfolio {
                     // 交易信息區塊
@@ -267,9 +264,6 @@ struct AddStockView: View {
         .navigationTitle("新增股票")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            //                ToolbarItem(placement: .navigationBarLeading) {
-            //                    Button("取消") { dismiss() }
-            //                }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("新增") {
                     addStock()
@@ -529,8 +523,4 @@ struct AddStockView: View {
         watchlist.append(newWatchStock)
         dismiss()
     }
-}
-
-#Preview {
-    ContentView()
 }

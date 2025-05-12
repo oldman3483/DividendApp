@@ -58,7 +58,3 @@ struct SearchStockView: View {
         }
     }
 }
-
-#Preview {
-    ContentView()
-}
