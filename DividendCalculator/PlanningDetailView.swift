@@ -12,141 +12,108 @@ struct PlanningDetailView: View {
     let plan: InvestmentPlan
     let onUpdate: (InvestmentPlan) -> Void
     
-    @State private var currentAmount: String
     @State private var showAmountInReport: Bool = true
     @State private var showingUpdateAlert = false
+    
+    private let stockService = LocalStockService()
+    @State private var stockName: String = ""
     
     init(plan: InvestmentPlan, onUpdate: @escaping (InvestmentPlan) -> Void) {
         self.plan = plan
         self.onUpdate = onUpdate
-        self._currentAmount = State(initialValue: String(format: "%.0f", plan.currentAmount))
     }
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
-                // 標題和目標摘要
+            VStack(spacing: 16) {
+                // 股票資訊和目標卡片
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 15) {
+                    VStack(spacing: 20) {
                         // 股票基本信息
-                        HStack {
-                            Text(plan.symbol)
-                                .font(.headline)
-                            Text(getStockName(plan.symbol))
-                                .foregroundColor(.gray)
+                        HStack(alignment: .center) {
+                            // 左側：股票代號和名稱
+                            HStack(spacing: 8) {
+                                Text(plan.symbol)
+                                    .font(.system(size: 22, weight: .bold))
+                                Text(stockName)
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.gray)
+                            }
+                            
                             Spacer()
+                            
+                            // 右側：目標年度
                             Text("\(plan.targetYear)年目標")
-                                .font(.subheadline)
+                                .font(.system(size: 18))
                                 .foregroundColor(.blue)
                         }
-                        .padding(.bottom, 5)
                         
-                        // 進度條
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 20)
-                                    .cornerRadius(10)
-                                
-                                Rectangle()
-                                    .fill(Color.blue)
-                                    .frame(width: geometry.size.width * CGFloat(plan.completionPercentage / 100), height: 20)
-                                    .cornerRadius(10)
-                                
-                                Text("\(Int(plan.completionPercentage))%")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                            }
-                        }
-                        .frame(height: 20)
+                        Divider()
+                            .background(Color.gray.opacity(0.3))
+                            .padding(.vertical, 4)
                         
+                        // 目標金額
                         HStack {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("目前已投入")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Text("$\(Int(plan.currentAmount).formattedWithComma)")
-                                    .font(.system(size: 16, weight: .medium))
-                            }
-                            
-                            Spacer()
-                            
-                            VStack(alignment: .trailing, spacing: 5) {
-                                Text("目標金額")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                Text("$\(Int(plan.targetAmount).formattedWithComma)")
-                                    .font(.system(size: 16, weight: .medium))
-                            }
-                        }
-                        
-                        Button(action: {
-                            showingUpdateAlert = true
-                        }) {
-                            Text("更新投資進度")
+                            Text("目標金額")
                                 .font(.system(size: 16))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.blue)
-                                .cornerRadius(8)
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text("$\(Int(plan.targetAmount).formattedWithComma)")
+                                .font(.system(size: 20, weight: .bold))
                         }
-                        .padding(.top, 10)
                     }
-                    .padding()
+                    .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
                 // 投資計劃詳情
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("投資計劃詳情")
                             .font(.headline)
-                            .padding(.bottom, 5)
+                            .padding(.bottom, 10)
                         
-                        DetailRow(
+                        // 使用固定格式的行來確保對齊
+                        detailRow(
                             title: "每\(plan.getFrequencyText())投入金額",
                             value: "$\(Int(plan.requiredAmount).formattedWithComma)",
                             valueColor: .blue
                         )
                         
-                        DetailRow(
+                        detailRow(
                             title: "投資頻率",
                             value: plan.getFrequencyText()
                         )
                         
-                        DetailRow(
+                        detailRow(
                             title: "投資年限",
                             value: "\(plan.investmentYears) 年"
                         )
                         
-                        DetailRow(
+                        detailRow(
                             title: "總投入金額",
                             value: "$\(Int(plan.requiredAmount * Double(plan.investmentFrequency * plan.investmentYears)).formattedWithComma)"
                         )
                         
-                        DetailRow(
+                        detailRow(
                             title: "預期報酬",
                             value: "$\(Int(plan.targetAmount - plan.requiredAmount * Double(plan.investmentFrequency * plan.investmentYears)).formattedWithComma)",
                             valueColor: .green
                         )
                     }
-                    .padding()
+                    .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
-                
                 // 預期階段性成就
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 15) {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("預期階段性成就")
                             .font(.headline)
-                            .padding(.bottom, 5)
+                            .padding(.bottom, 10)
                         
-                        // 時間點預測
-                        HStack(spacing: 12) {
+                        // 使用更美觀的卡片排列
+                        HStack(spacing: 10) {
                             forecastCard(
                                 year: 1,
                                 title: "1年後",
@@ -154,8 +121,8 @@ struct PlanningDetailView: View {
                             )
                             
                             forecastCard(
-                                year: plan.investmentYears / 2,
-                                title: "\(plan.investmentYears / 2)年後",
+                                year: 3,
+                                title: "3年後",
                                 plan: plan
                             )
                             
@@ -167,51 +134,65 @@ struct PlanningDetailView: View {
                             )
                         }
                     }
-                    .padding()
+                    .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
                 
                 // 注意事項
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("注意事項")
                             .font(.headline)
-                            .padding(.bottom, 5)
+                            .padding(.bottom, 8)
                         
-                        Text("• 此計算基於歷史平均報酬率，實際投資報酬可能有所不同")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        
-                        Text("• 計算假設報酬率平均分布，未考慮市場波動")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        
-                        Text("• 投資涉及風險，過去的表現不代表未來的結果")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                        noticeRow(text: "此計算基於歷史平均報酬率，實際投資報酬可能有所不同")
+                        noticeRow(text: "計算假設報酬率平均分布，未考慮市場波動")
+                        noticeRow(text: "投資涉及風險，過去的表現不代表未來的結果")
                     }
-                    .padding()
+                    .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
             }
-            .padding()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
         .background(Color.black)
         .navigationTitle(plan.title)
         .navigationBarTitleDisplayMode(.inline)
-        .alert("更新投資進度", isPresented: $showingUpdateAlert) {
-            TextField("已投入金額", text: $currentAmount)
-                .keyboardType(.numberPad)
-            Button("取消", role: .cancel) { }
-            Button("更新") {
-                updateCurrentAmount()
-            }
-        } message: {
-            Text("請輸入目前已投入的總金額")
+        .task {
+            await fetchStockName()
         }
     }
     
-    // 預測卡片
+    // 一致的詳情行顯示格式
+    private func detailRow(title: String, value: String, valueColor: Color = .white) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 16))
+                .foregroundColor(.gray)
+            Spacer()
+            Text(value)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(valueColor)
+        }
+        .padding(.vertical, 8)
+    }
+    
+    // 注意事項行格式
+    private func noticeRow(text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("•")
+                .foregroundColor(.gray)
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+        .padding(.vertical, 2)
+    }
+    
+    // 改進的預測卡片
     private func forecastCard(year: Int, title: String, plan: InvestmentPlan, isTarget: Bool = false) -> some View {
         let (amount, percentage) = calculateForecastValue(year: year, plan: plan)
         
@@ -221,17 +202,22 @@ struct PlanningDetailView: View {
                 .foregroundColor(.gray)
             
             Text("$\(Int(amount).formattedWithComma)")
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundColor(isTarget ? .green : .white)
                 .lineLimit(1)
-                .minimumScaleFactor(0.5)
+                .minimumScaleFactor(0.7)
             
             Text(String(format: "+%.1f%%", percentage))
                 .font(.system(size: 14))
                 .foregroundColor(.blue)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 6)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(4)
         }
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
         .background(isTarget ? Color.green.opacity(0.2) : Color(white: 0.2))
         .cornerRadius(10)
     }
@@ -267,19 +253,12 @@ struct PlanningDetailView: View {
         return (futureValue, percentage)
     }
     
-    // 更新當前投資金額
-    private func updateCurrentAmount() {
-        if let amount = Double(currentAmount), amount >= 0 {
-            var updatedPlan = plan
-            updatedPlan.currentAmount = amount
-            onUpdate(updatedPlan)
-        }
-    }
-    
     // 獲取股票名稱
-    private func getStockName(_ symbol: String) -> String {
-        // 這裡應該根據 symbol 獲取股票名稱，可以使用本地服務
-        // 簡單起見，這裡先返回空字符串
-        return ""
+    private func fetchStockName() async {
+        let name = await stockService.getTaiwanStockInfo(symbol: plan.symbol)
+        
+        await MainActor.run {
+            stockName = name ?? ""
+        }
     }
 }
