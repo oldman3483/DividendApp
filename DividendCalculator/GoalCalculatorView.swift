@@ -388,7 +388,7 @@ struct GoalCalculatorView: View {
             
             // 計算未來值
             var futureValue = initialAmount
-            for i in 1...(investmentFrequency * year) {
+            for _ in 1...(investmentFrequency * year) {
                 futureValue = futureValue * (1 + annualRate / Double(investmentFrequency))
                 futureValue += periodicAmount
             }

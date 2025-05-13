@@ -67,7 +67,6 @@ class APIService {
         return try await performRequest(request)
     }
     
-    
     // MARK: - 獲取股利資料
     func getDividendData(symbol: String) async throws -> DividendResponse {
         let path = "get_t_\(symbol)_data"

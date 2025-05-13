@@ -393,19 +393,22 @@ struct AddStockView: View {
     }
     
     private func addToBank() {
-        
-        print("開始新增股票")
-        print("傳入的銀行ID: \(bankId)")
-        print("選擇的銀行ID: \(selectedBankId)")
+        print("========================")
+        print("AddStockView.addToBank 詳細日誌")
+        print("銀行ID: \(bankId)")
+        print("選中的銀行ID: \(selectedBankId)")
+        print("是否來自銀行投資組合: \(isFromBankPortfolio)")
+        print("最終使用的銀行ID: \(isFromBankPortfolio ? bankId : selectedBankId)")
+        print("所有銀行: \(banks.map { $0.id })")
+        print("股票符號: \(initialSymbol)")
+        print("股票名稱: \(initialName)")
+        print("股數: \(shares)")
+        print("是否為定期定額: \(isRegularInvestment)")
+        print("========================")
         
         // 確保銀行ID一致
         let finalBankId = isFromBankPortfolio ? bankId : selectedBankId
         
-        if banks.isEmpty {
-            let defaultBank = Bank(name: "預設銀行")
-            banks.append(defaultBank)
-            selectedBankId = defaultBank.id
-        }
         
         // 定期定額模式的驗證
         if isRegularInvestment {
@@ -484,6 +487,11 @@ struct AddStockView: View {
                 return
             }
             
+            let stockBankId = isFromBankPortfolio ? bankId : selectedBankId
+            
+            print("新增股票: \(initialSymbol) 到銀行ID: \(stockBankId)")
+            print("新增前股票數量: \(stocks.count)")
+            
             let newStock = Stock(
                 symbol: initialSymbol,
                 name: initialName,
@@ -493,18 +501,27 @@ struct AddStockView: View {
                 frequency: frequency ?? 1,
                 purchaseDate: purchaseDate,
                 purchasePrice: priceDouble,
-                bankId: finalBankId
+                bankId: stockBankId
             )
             
-            stocks.append(newStock)
-            print("股票已添加，新ID為: \(newStock.id), 銀行ID: \(newStock.bankId)")
-            dismiss()
+            var updatedStocks = stocks
+            updatedStocks.append(newStock)
+            stocks = updatedStocks
+            
+            print("========================")
+            print("股票添加結果")
+            print("成功添加: 股票ID \(newStock.id)")
+            print("銀行ID: \(newStock.bankId)")
+            print("股票數量: \(stocks.count)")
+            print("屬於此銀行的股票: \(stocks.filter { $0.bankId == stockBankId }.count)")
+            print("========================")
+            DispatchQueue.main.async {
+                dismiss()
+            }
         }
     }
     
     private func addToWatchlist() {
-        // 獲取選中的觀察清單名稱
-//        let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames") ?? ["自選清單1"]
         
         // 检查是否已存在
         let exists = watchlist.contains { $0.symbol == initialSymbol && $0.listName == selectedWatchlist }
