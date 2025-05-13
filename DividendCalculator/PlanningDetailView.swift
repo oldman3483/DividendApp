@@ -11,16 +11,25 @@ import Charts
 struct PlanningDetailView: View {
     let plan: InvestmentPlan
     let onUpdate: (InvestmentPlan) -> Void
+    @Binding var stocks: [Stock]
+    @Binding var banks: [Bank]
     
     @State private var showAmountInReport: Bool = true
     @State private var showingUpdateAlert = false
     
+    @State private var showingConvertToPlanSheet = false
+    @State private var selectedBankId: UUID? = nil
+    @State private var startDate = Date()
+    
+    
     private let stockService = LocalStockService()
     @State private var stockName: String = ""
     
-    init(plan: InvestmentPlan, onUpdate: @escaping (InvestmentPlan) -> Void) {
+    init(plan: InvestmentPlan, onUpdate: @escaping (InvestmentPlan) -> Void, stocks: Binding<[Stock]>, banks: Binding<[Bank]>) {
         self.plan = plan
         self.onUpdate = onUpdate
+        self._stocks = stocks
+        self._banks = banks
     }
     
     var body: some View {
@@ -152,6 +161,22 @@ struct PlanningDetailView: View {
                     .padding(.vertical, 4)
                 }
                 .groupBoxStyle(TransparentGroupBox())
+                
+                // 添加轉換為定期定額計畫的按鈕
+                Button(action: {
+                    showingConvertToPlanSheet = true
+                }) {
+                    HStack {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                        Text("轉換為定期定額計畫")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                .padding(.top, 10)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -161,6 +186,122 @@ struct PlanningDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await fetchStockName()
+        }
+        .sheet(isPresented: $showingConvertToPlanSheet) {
+            ConvertToPlanView(
+                plan: plan,
+                stocks: $stocks,
+                banks: $banks,
+                onConvert: { bankId, startDate in
+                    convertToRegularPlan(bankId: bankId, startDate: startDate)
+                }
+            )
+        }
+    }
+    
+    private func fetchStockName() async {
+        let name = await stockService.getTaiwanStockInfo(symbol: plan.symbol)
+        
+        await MainActor.run {
+            stockName = name ?? ""
+        }
+    }
+    
+    private func convertToRegularPlan(bankId: UUID, startDate: Date) {
+        // 創建新的定期定額投資設定
+        let regularInvestment = RegularInvestment(
+            title: plan.title,
+            amount: plan.requiredAmount,
+            frequency: getFrequencyFromPlan(),
+            startDate: startDate,
+            endDate: getEndDateFromPlan(),
+            isActive: true,
+            note: "從「\(plan.title)」規劃轉換而來"
+        )
+        
+        let newStock = Stock(
+            symbol: plan.symbol,
+            name: stockName,
+            shares: 0, // 定期定額初始股數為0
+            dividendPerShare: 0, // 先設為0，後續會自動獲取
+            dividendYear: Calendar.current.component(.year, from: Date()),
+            frequency: 1, // 先設為1，後續會自動獲取
+            bankId: bankId,
+            regularInvestment: regularInvestment
+        )
+        stocks.append(newStock)
+        
+        Task {
+            var updatedStock = newStock
+            await updatedStock.updateRegularInvestmentTransactions(stockService: stockService)
+            
+            await MainActor.run {
+                if let index = stocks.firstIndex(where: { $0.id == newStock.id }) {
+                    stocks[index] = updatedStock
+                }
+            }
+        }
+        
+        Task {
+            await updateStockDividendInfo(stock: newStock)
+        }
+        
+        showingConvertToPlanSheet = false
+    }
+    
+    private func getFrequencyFromPlan() -> RegularInvestment.Frequency {
+        switch plan.investmentFrequency {
+        case 12:
+            return .monthly
+        case 4:
+            return .quarterly
+        case 1:
+            return .monthly // 一年一次太久，轉為每月
+        default:
+            return .monthly
+        }
+    }
+    
+    private func getEndDateFromPlan() -> Date? {
+        let calendar = Calendar.current
+        return calendar.date(byAdding: .year, value: plan.investmentYears, to: Date())
+    }
+    
+    private func updateStockDividendInfo(stock: Stock) async {
+            var updatedStock = stock
+            
+            // 獲取股息資訊
+            do {
+                let dividendResponse = try await APIService.shared.getDividendData(symbol: plan.symbol)
+                
+                // 使用 SQLDataProcessor 處理資料
+                let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
+                let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
+                
+                await MainActor.run {
+                    if let index = stocks.firstIndex(where: { $0.id == stock.id }) {
+                        updatedStock.dividendPerShare = dividendPerShare
+                        updatedStock.frequency = frequency
+                        stocks[index] = updatedStock
+                    }
+                }
+            } catch {
+                print("從 API 獲取股息資料失敗: \(error.localizedDescription)")
+                
+                // 如果API獲取失敗，使用本地服務
+                if let dividend = await stockService.getTaiwanStockDividend(symbol: plan.symbol) {
+                    updatedStock.dividendPerShare = dividend
+                }
+                if let freq = await stockService.getTaiwanStockFrequency(symbol: plan.symbol) {
+                    updatedStock.frequency = freq
+                }
+                
+                await MainActor.run {
+                    if let index = stocks.firstIndex(where: { $0.id == stock.id }) {
+                        stocks[index] = updatedStock
+                    }
+                }
+            }
         }
     }
     
@@ -253,12 +394,105 @@ struct PlanningDetailView: View {
         return (futureValue, percentage)
     }
     
-    // 獲取股票名稱
-    private func fetchStockName() async {
-        let name = await stockService.getTaiwanStockInfo(symbol: plan.symbol)
-        
-        await MainActor.run {
-            stockName = name ?? ""
+
+struct ConvertToPlanView: View {
+    @Environment(\.dismiss) private var dismiss
+    let plan: InvestmentPlan
+    @Binding var stocks: [Stock]
+    @Binding var banks: [Bank]
+    let onConvert: (UUID, Date) -> Void
+    
+    @State private var selectedBankId: UUID?
+    @State private var startDate = Date()
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
+    // 添加銀行列表
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("轉換設定")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("將「\(plan.title)」轉換為定期定額計畫")
+                            .font(.headline)
+                            .lineLimit(2)
+                        
+                        Text("每\(getFrequencyText())投入金額: $\(Int(plan.requiredAmount).formattedWithComma)")
+                            .foregroundColor(.blue)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                Section(header: Text("選擇銀行")) {
+                    if banks.isEmpty {
+                        Text("請先新增銀行")
+                            .foregroundColor(.red)
+                    } else {
+                        Picker("選擇銀行", selection: $selectedBankId) {
+                            ForEach(banks) { bank in
+                                Text(bank.name).tag(bank.id as UUID?)
+                            }
+                        }
+                    }
+                }
+                
+                Section(header: Text("開始日期")) {
+                    DatePicker("開始執行日期", selection: $startDate, displayedComponents: .date)
+                }
+                
+                Section {
+                    Button(action: {
+                        if let bankId = selectedBankId {
+                            onConvert(bankId, startDate)
+                            dismiss()
+                        } else {
+                            showError = true
+                            errorMessage = "請選擇銀行"
+                        }
+                    }) {
+                        Text("確認轉換")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .foregroundColor(.white)
+                            .background(selectedBankId != nil ? Color.blue : Color.gray)
+                            .cornerRadius(8)
+                    }
+                    .disabled(selectedBankId == nil)
+                }
+            }
+            .background(Color.black)
+            .scrollContentBackground(.hidden)
+            .navigationTitle("轉換為定期定額")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("取消") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("錯誤", isPresented: $showError) {
+                Button("確定", role: .cancel) { }
+            } message: {
+                Text(errorMessage)
+            }
+            .onAppear {
+                // 如果只有一個銀行，則默認選中
+                if banks.count == 1 {
+                    selectedBankId = banks.first?.id
+                }
+            }
+        }
+    }
+    
+    // 獲取頻率文字
+    private func getFrequencyText() -> String {
+        switch plan.investmentFrequency {
+        case 1: return "年"
+        case 4: return "季"
+        case 12: return "月"
+        default: return "期"
         }
     }
 }

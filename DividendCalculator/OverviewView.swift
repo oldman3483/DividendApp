@@ -101,7 +101,7 @@ struct OverviewView: View {
                     Text("我的規劃")
                         .font(.headline)
                     Spacer()
-                    NavigationLink(destination: PlanningListView()) {
+                    NavigationLink(destination: PlanningListView(stocks: $stocks,banks: $banks)) {
                         Text("查看全部")
                             .font(.system(size: 14))
                             .foregroundColor(.blue)
@@ -144,7 +144,7 @@ struct OverviewView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(plans) { plan in
-                                PlanCardPreview(plan: plan)
+                                PlanCardPreview(plan: plan,stocks: $stocks, banks: $banks)
                             }
                         }
                     }
@@ -168,8 +168,16 @@ struct OverviewView: View {
     struct PlanCardPreview: View {
         let plan: InvestmentPlan
         
+        @Binding var stocks: [Stock]
+        @Binding var banks: [Bank]
+        
         var body: some View {
-            NavigationLink(destination: PlanningDetailView(plan: plan, onUpdate: { _ in })) {
+            NavigationLink(destination: PlanningDetailView(
+                plan: plan,
+                onUpdate: { _ in },
+                stocks: $stocks,
+                banks: $banks
+            )) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(plan.title)
                         .font(.system(size: 16, weight: .medium))

@@ -17,6 +17,9 @@ struct PlanningListView: View {
     @State private var errorMessage: String = ""
     @State private var showingErrorAlert = false
     
+    @Binding var stocks: [Stock]
+    @Binding var banks: [Bank]
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -206,7 +209,10 @@ struct PlanningListView: View {
                         plans[index] = updatedPlan
                         savePlans()
                     }
-                })
+                },
+                                                stocks: $stocks,
+                                                banks: $banks
+            )
             ) {
                 EmptyView()
             }

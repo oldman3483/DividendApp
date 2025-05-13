@@ -89,8 +89,14 @@ struct RegularInvestment: Codable, Equatable {
     }
     // 計算執行狀態
     var executionStatus: ExecutionStatus {
+        // 如果沒有交易記錄，則根據開始日期判斷
         guard let transactions = transactions,
               !transactions.isEmpty else {
+            // 如果開始日期在今天或之前，且計畫已啟用，顯示為進行中
+            if startDate <= Date() && isActive {
+                return .ongoing
+            }
+            // 如果開始日期在未來，顯示為未啟用
             return .inactive
         }
         
