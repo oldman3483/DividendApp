@@ -125,6 +125,8 @@ struct StockDetailView: View {
 struct PortfolioView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
     
     @State private var isEditing = false
     @State private var showingSearchView = false
@@ -444,6 +446,8 @@ struct PortfolioView: View {
         .sheet(isPresented: $showingSearchView) {
             SearchStockView(
                 stocks: $stocks,
+                watchlist: $watchlist,
+                banks: $banks,
                 bankId: bankId
             )
         }

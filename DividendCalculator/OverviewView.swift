@@ -10,6 +10,7 @@ import SwiftUI
 struct OverviewView: View {
     @Binding var banks: [Bank]
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
     
     // 使用 AppStorage
     @AppStorage("targetAmount") private var targetAmount: Double?
@@ -232,7 +233,11 @@ struct OverviewView: View {
                     Text("我的庫存")
                         .font(.headline)
                     Spacer()
-                    NavigationLink(destination: BankListView(banks: $banks, stocks: $stocks)) {
+                    NavigationLink(destination: BankListView(
+                        banks: $banks,
+                        stocks: $stocks,
+                        watchlist: $watchlist
+                    )) {
                         Text("查看全部")
                             .font(.system(size: 14))
                             .foregroundColor(.blue)
@@ -243,7 +248,12 @@ struct OverviewView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(banks) { bank in
-                            BankCardPreview(bank: bank, stocks: stocks)
+                            BankCardPreview(
+                                banks: $banks,
+                                stocks: $stocks,
+                                watchlist: $watchlist,
+                                bank: bank
+                            )
                         }
                     }
                 }
@@ -441,8 +451,12 @@ struct OverviewView: View {
 
 // BankListSummaryView 中的 MainMetricCard 風格
 struct BankCardPreview: View {
+    @Binding var banks: [Bank]
+    @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    
     let bank: Bank
-    let stocks: [Stock]
+//    let stocks: [Stock]
     
     // 該銀行的股票
     private var bankStocks: [Stock] {
@@ -488,7 +502,14 @@ struct BankCardPreview: View {
     }
     
     var body: some View {
-        NavigationLink(destination: PortfolioView(stocks: .constant(stocks), bankId: bank.id, bankName: bank.name)) {
+        NavigationLink(destination: PortfolioView(
+            stocks: $stocks,
+            watchlist: $watchlist,
+            banks: $banks,
+            bankId: bank.id,
+            bankName: bank.name
+        )
+        ){
             VStack(alignment: .leading, spacing: 8) {
                 Text(bank.name)
                     .font(.system(size: 16, weight: .medium))

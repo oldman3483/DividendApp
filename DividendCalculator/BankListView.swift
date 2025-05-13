@@ -10,6 +10,7 @@ import SwiftUI
 struct BankListView: View {
     @Binding var banks: [Bank]
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
     @State private var showingAddBank = false
     @State private var isEditing = false
     @State private var showingRenameAlert = false
@@ -209,6 +210,8 @@ struct BankListView: View {
             NavigationLink(
                 destination: PortfolioView(
                     stocks: $stocks,
+                    watchlist: $watchlist,
+                    banks: $banks,
                     bankId: bank.id,
                     bankName: bank.name
                 )

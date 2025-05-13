@@ -8,9 +8,17 @@
 
 import SwiftUI
 
+struct SearchStock {
+    let symbol: String
+    let name: String
+}
+
 struct SearchStockView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var stocks: [Stock]
+    @Binding var watchlist: [WatchStock]
+    @Binding var banks: [Bank]
+    
     let bankId: UUID
     @State private var searchText = ""
     @State private var showingSearchResult = false
@@ -22,8 +30,8 @@ struct SearchStockView: View {
                 SearchBarView(
                     searchText: $searchText,
                     stocks: $stocks,
-                    watchlist: .constant([]),
-                    banks: .constant([]),
+                    watchlist: $watchlist,
+                    banks: $banks,
                     bankId: bankId
                 )
                 .padding(.top)
@@ -50,8 +58,8 @@ struct SearchStockView: View {
         .sheet(isPresented: $showingSearchResult) {
             SearchResultView(
                 stocks: $stocks,
-                watchlist: .constant([]),
-                banks: .constant([]),
+                watchlist: $watchlist,
+                banks: $banks,
                 searchText: searchText,
                 bankId: bankId
             )

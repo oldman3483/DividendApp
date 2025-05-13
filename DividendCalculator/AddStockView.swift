@@ -62,8 +62,18 @@ struct AddStockView: View {
         // 優先使用傳入的 bankId
         _selectedBankId = State(initialValue: bankId)
         
+        // 如果是從銀行投資組合進入，強制設定為"銀行"
+        _selectedDestination = State(initialValue: isFromBankPortfolio ? "銀行" : "銀行")
+
+        
         let defaultWatchlist = UserDefaults.standard.stringArray(forKey: "watchlistNames")?[0] ?? "自選清單1"
         _selectedWatchlist = State(initialValue: defaultWatchlist)
+        
+        // 輸出初始設置的值
+        print("初始化 AddStockView")
+        print("傳入的銀行ID: \(bankId)")
+        print("選擇的銀行ID: \(bankId)")
+        
     }
     
     private func shouldDisableAddButton() -> Bool {
@@ -273,6 +283,30 @@ struct AddStockView: View {
         }
         .task {
             await loadStockData()
+            
+            print("視圖加載時檢查銀行列表:")
+                        print("銀行列表數量: \(banks.count)")
+                        print("所有銀行 ID: \(banks.map { $0.id })")
+                        print("當前選中銀行 ID: \(selectedBankId)")
+        }
+        .onAppear {
+            print("可用的銀行列表:")
+            for bank in banks {
+                print("銀行: \(bank.name), ID: \(bank.id)")
+            }
+            print("銀行列表數量: \(banks.count)")
+            print("當前選中的銀行ID: \(selectedBankId)")
+            print("是否從銀行組合進入: \(isFromBankPortfolio)")
+            print("傳入的銀行ID: \(bankId)")
+            
+            // 檢查banks是否為空，如果為空則打印警告
+            if banks.isEmpty {
+                print("警告：banks列表為空！")
+            }
+            
+            // 檢查選擇的銀行ID是否存在於banks列表中
+            let bankExists = banks.contains { $0.id == selectedBankId }
+            print("選中的銀行ID是否存在於banks列表中: \(bankExists)")
         }
     }
 

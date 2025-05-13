@@ -21,7 +21,7 @@ struct MainTabView: View {
         TabView {
             // Tab 1: 總覽
             NavigationStack {
-                OverviewView(banks: $banks, stocks: $stocks)
+                OverviewView(banks: $banks, stocks: $stocks,watchlist: $watchlist)
             }
             .padding(.top, 40)
             .tabItem {
