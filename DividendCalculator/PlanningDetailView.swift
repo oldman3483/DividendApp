@@ -208,7 +208,7 @@ struct PlanningDetailView: View {
     }
     
     private func convertToRegularPlan(bankId: UUID, startDate: Date) {
-        // 創建新的定期定額投資設定
+        // 創建新的定期定額投資設定，確保 transactions 初始化為空陣列
         let regularInvestment = RegularInvestment(
             title: plan.title,
             amount: plan.requiredAmount,
@@ -216,7 +216,8 @@ struct PlanningDetailView: View {
             startDate: startDate,
             endDate: getEndDateFromPlan(),
             isActive: true,
-            note: "從「\(plan.title)」規劃轉換而來"
+            note: "從「\(plan.title)」規劃轉換而來",
+            transactions: [] // 明確初始化為空陣列
         )
         
         let newStock = Stock(
@@ -229,21 +230,27 @@ struct PlanningDetailView: View {
             bankId: bankId,
             regularInvestment: regularInvestment
         )
+        
+        // 添加到股票列表
         stocks.append(newStock)
         
+        // 在單一 Task 中處理所有更新，避免競爭條件
         Task {
-            var updatedStock = newStock
-            await updatedStock.updateRegularInvestmentTransactions(stockService: stockService)
+            // 1. 首先更新股息信息
+            await updateStockDividendInfo(stock: newStock)
             
-            await MainActor.run {
-                if let index = stocks.firstIndex(where: { $0.id == newStock.id }) {
-                    stocks[index] = updatedStock
+            // 2. 然後獲取最新的股票並更新交易記錄
+            if var updatedStock = stocks.first(where: { $0.id == newStock.id }) {
+                // 確保在生成交易記錄前股票已經有正確的股息信息
+                await updatedStock.updateRegularInvestmentTransactions(stockService: stockService)
+                
+                // 在主線程更新股票
+                await MainActor.run {
+                    if let index = stocks.firstIndex(where: { $0.id == newStock.id }) {
+                        stocks[index] = updatedStock
+                    }
                 }
             }
-        }
-        
-        Task {
-            await updateStockDividendInfo(stock: newStock)
         }
         
         showingConvertToPlanSheet = false

@@ -179,47 +179,55 @@ struct OverviewView: View {
                 banks: $banks
             )) {
                 VStack(alignment: .leading, spacing: 8) {
+                    // 第一行：規劃標題
                     Text(plan.title)
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                     
-                    Text("\(plan.symbol)")
+                    // 第二行：股票代號和名稱
+                    Text("\(plan.symbol) \(getStockName(plan.symbol))")
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                     
-                    // 進度條
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(height: 10)
-                                .cornerRadius(5)
-                            
-                            Rectangle()
-                                .fill(Color.blue)
-                                .frame(width: geometry.size.width * CGFloat(plan.completionPercentage / 100), height: 10)
-                                .cornerRadius(5)
-                        }
-                    }
-                    .frame(height: 10)
+                    // 第三行：目標金額
+                    Text("目標: $\(Int(plan.targetAmount).formattedWithComma)")
+                        .font(.system(size: 14))
+                        .foregroundColor(.green)
                     
-                    HStack {
-                        Text("$\(Int(plan.currentAmount).formattedWithComma) / $\(Int(plan.targetAmount).formattedWithComma)")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                        
-                        Spacer()
-                        
-                        Text("\(Int(plan.completionPercentage))%")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
-                    }
+                    // 第四行：投資年限和頻率
+                    Text("\(plan.investmentYears)年・\(getFrequencyText(plan.investmentFrequency))")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue)
                 }
-                .padding(12)
-                .frame(width: 170, height: 110)
+                .padding()
                 .cardBackground()
             }
             .buttonStyle(PlainButtonStyle())
+        }
+        
+        // 獲取股票名稱
+        private func getStockName(_ symbol: String) -> String {
+            // 檢查用戶投資組合
+            if let stockInPortfolio = stocks.first(where: { $0.symbol == symbol }) {
+                return stockInPortfolio.name
+            }
+            
+            // 沒找到則返回股票代號作為名稱
+            return ""
+        }
+        
+        // 格式化頻率文本
+        private func getFrequencyText(_ frequency: Int) -> String {
+            switch frequency {
+            case 1:
+                return "每年"
+            case 4:
+                return "每季"
+            case 12:
+                return "每月"
+            default:
+                return "自訂"
+            }
         }
     }
 

@@ -82,6 +82,11 @@ struct PlanningListView: View {
         }
         .onAppear {
             loadPlans()
+            
+            // 預加載所有計劃中的股票名稱
+            for plan in plans {
+                fetchStockNameAsync(plan.symbol)
+            }
         }
     }
     
@@ -157,44 +162,29 @@ struct PlanningListView: View {
                     .padding(.vertical, 8)
                 }
             } else {
-                // 一般模式
+                // 一般模式 - 修改後的卡片
                 VStack(alignment: .leading, spacing: 10) {
+                    // 第一行：規劃標題
+                    Text(plan.title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    // 第二行：股票代號和名稱
                     HStack {
-                        Text(plan.title)
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                        
-                        Spacer()
-                        
                         Text("\(plan.symbol) \(getStockName(plan.symbol))")
                             .font(.system(size: 14))
                             .foregroundColor(.gray)
                     }
                     
-                    // 進度條
-                    GeometryReader { geometry in
-                        ZStack(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.3))
-                                .frame(height: 10)
-                                .cornerRadius(5)
-                            
-                            Rectangle()
-                                .fill(Color.blue)
-                                .frame(width: geometry.size.width * CGFloat(plan.completionPercentage / 100), height: 10)
-                                .cornerRadius(5)
-                        }
-                    }
-                    .frame(height: 10)
-                    
+                    // 第三行：目標金額、投資年限和頻率
                     HStack {
-                        Text("$ \(Int(plan.currentAmount).formattedWithComma) / $ \(Int(plan.targetAmount).formattedWithComma)")
+                        Text("目標: $\(Int(plan.targetAmount).formattedWithComma)")
                             .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.green)
                         
                         Spacer()
                         
-                        Text("\(Int(plan.completionPercentage))%")
+                        Text("\(plan.investmentYears)年・\(getFrequencyText(plan.investmentFrequency))")
                             .font(.system(size: 14))
                             .foregroundColor(.blue)
                     }
@@ -212,13 +202,27 @@ struct PlanningListView: View {
                 },
                                                 stocks: $stocks,
                                                 banks: $banks
-            )
+                )
             ) {
                 EmptyView()
             }
             .opacity(0)
         }
-        .frame(height: 90)
+        .frame(height: 100)
+    }
+
+    // 添加輔助函數用來格式化頻率文本
+    private func getFrequencyText(_ frequency: Int) -> String {
+        switch frequency {
+        case 1:
+            return "每年"
+        case 4:
+            return "每季"
+        case 12:
+            return "每月"
+        default:
+            return "自訂"
+        }
     }
     
     // MARK: - Helper Methods
@@ -264,10 +268,59 @@ struct PlanningListView: View {
         showingRenameAlert = false
     }
     
+    // 添加新的屬性來緩存股票名稱
+    @State private var stockNameCache: [String: String] = [:]
+    private let stockService = LocalStockService()
+
+    // 同步獲取股票名稱（優先從緩存獲取）
+
     private func getStockName(_ symbol: String) -> String {
-        // 這裡應該根據 symbol 獲取股票名稱，可以使用本地服務
-        // 簡單起見，這裡先返回空字符串
-        return ""
+        // 1. 檢查緩存
+        if let cachedName = stockNameCache[symbol], !cachedName.isEmpty {
+            return cachedName
+        }
+        
+        // 2. 檢查用戶投資組合
+        if let stockInPortfolio = stocks.first(where: { $0.symbol == symbol }) {
+            // 不在這裡直接更新緩存，而是通過異步操作更新
+            // 在下一個事件循環中更新緩存
+            Task { @MainActor in
+                stockNameCache[symbol] = stockInPortfolio.name
+            }
+            return stockInPortfolio.name
+        }
+        
+        // 3. 如果沒有找到，觸發異步加載
+        fetchStockNameAsync(symbol)
+        
+        // 4. 返回一個臨時值
+        return symbol // 暫時返回股票代號作為名稱
+    }
+
+    // 異步加載股票名稱
+    private func fetchStockNameAsync(_ symbol: String) {
+        Task {
+            // 如果已經在緩存中且不為空，則跳過
+            if let cached = stockNameCache[symbol], !cached.isEmpty {
+                return
+            }
+            
+            // 從服務獲取名稱
+            if let name = await stockService.getTaiwanStockInfo(symbol: symbol), !name.isEmpty {
+                await MainActor.run {
+                    // 更新緩存
+                    stockNameCache[symbol] = name
+                    
+                    // 由於UI可能已經顯示，所以需要觸發刷新
+                    if !self.plans.isEmpty {
+                        // 使用一個小技巧觸發視圖重繪
+                        let temp = self.plans
+                        self.plans = []
+                        self.plans = temp
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - 數據持久化
