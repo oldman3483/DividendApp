@@ -227,74 +227,42 @@ struct BankListView: View {
     private func updatePortfolioMetrics() async {
         var metrics = PortfolioMetrics()
         
+        // 篩選出屬於用戶所有銀行的股票
         let bankStocks = stocks.filter { stock in
             banks.contains { bank in
                 bank.id == stock.bankId
             }
         }
-        // 计算总投资成本、总市值和总报酬
-        var totalInvestment: Double = 0
         
-        for stock in bankStocks {
-            if let currentPrice = await stockService.getStockPrice(symbol: stock.symbol, date: Date()) {
-                // 一般持股
-                let normalShares = stock.shares
-                let normalStockValue = Double(normalShares) * currentPrice
-                
-                var normalInvestment: Double = 0
-                if let purchasePrice = stock.purchasePrice {
-                    normalInvestment = Double(normalShares) * purchasePrice
-                }
-                
-                // 定期定额已执行的交易
-                var regularExecutedShares = 0
-                var regularInvestment: Double = 0
-                
-                if let investment = stock.regularInvestment {
-                    let executedTransactions = investment.transactions?.filter { $0.isExecuted } ?? []
-                    
-                    regularExecutedShares = executedTransactions.reduce(0) { $0 + $1.shares }
-                    regularInvestment = executedTransactions.reduce(0.0) { $0 + $1.amount }
-                }
-                
-                let regularExecutedValue = Double(regularExecutedShares) * currentPrice
-                
-                // 累加总市值
-                metrics.totalValue += (normalStockValue + regularExecutedValue)
-                
-                // 累加总投资成本
-                totalInvestment += (normalInvestment + regularInvestment)
-                
-                // 获取昨日价格来计算当日损益
-                if let yesterdayPrice = await stockService.getStockPrice(
-                    symbol: stock.symbol,
-                    date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                ) {
-                    let dailyPriceChange = currentPrice - yesterdayPrice
-                    let totalShares = normalShares + regularExecutedShares
-                    
-                    metrics.dailyChange += Double(totalShares) * dailyPriceChange
-                }
-                
-                // 计算年化股利
-                let totalShares = normalShares + regularExecutedShares
-                metrics.totalAnnualDividend += Double(totalShares) * stock.dividendPerShare * Double(stock.frequency)
-            }
-        }
+        // 使用 StockValueService 獲取當前價格和前一日價格
+        let stockValueService = StockValueService.shared
+        let currentPrices = await stockValueService.getCurrentPrices(for: bankStocks)
+        let previousPrices = await stockValueService.getPreviousDayPrices(for: bankStocks)
         
-        // 计算总投资报酬（总市值 - 总投资成本）
+        // 計算總市值
+        metrics.totalValue = await stockValueService.calculateTotalValue(for: bankStocks, currentPrices: currentPrices)
+        
+        // 計算總投資成本
+        let totalInvestment = stockValueService.calculateTotalInvestment(for: bankStocks)
+        
+        // 計算當日損益和漲跌幅
+        let (dailyChange, dailyChangePercentage) = stockValueService.calculateDailyChange(
+            for: bankStocks,
+            currentPrices: currentPrices,
+            previousPrices: previousPrices
+        )
+        metrics.dailyChange = dailyChange
+        metrics.dailyChangePercentage = dailyChangePercentage
+        
+        // 計算總報酬和報酬率
         metrics.totalProfitLoss = metrics.totalValue - totalInvestment
+        metrics.totalROI = totalInvestment > 0 ? (metrics.totalProfitLoss / totalInvestment) * 100 : 0
         
-        // 计算百分比
-        if totalInvestment > 0 {
-            metrics.totalROI = (metrics.totalProfitLoss / totalInvestment) * 100
-        }
+        // 計算年化股利和股利率
+        metrics.totalAnnualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
+        metrics.dividendYield = metrics.totalValue > 0 ? (metrics.totalAnnualDividend / metrics.totalValue) * 100 : 0
         
-        if metrics.totalValue > 0 {
-            metrics.dailyChangePercentage = (metrics.dailyChange / metrics.totalValue) * 100
-            metrics.dividendYield = (metrics.totalAnnualDividend / metrics.totalValue) * 100
-        }
-        
+        // 在主線程更新UI
         await MainActor.run {
             self.portfolioMetrics = metrics
         }
@@ -345,8 +313,4 @@ struct BankListView: View {
         newBankName = ""
         showingRenameAlert = false
     }
-}
-
-#Preview {
-    ContentView()
 }

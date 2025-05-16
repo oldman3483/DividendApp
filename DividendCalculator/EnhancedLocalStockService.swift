@@ -146,6 +146,7 @@ class EnhancedLocalStockService {
         return await localService.getStockPrice(symbol: symbol, date: date)
     }
     
+    
     /// 獲取股利歷史
     func getDividendHistory(symbol: String, years: Int = 3) async -> [DividendData] {
         return await repository.getDividendHistory(symbol: symbol, years: years)

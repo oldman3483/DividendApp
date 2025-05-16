@@ -3,6 +3,7 @@
 //  DividendCalculator
 //
 //  Created by Heidie Lee on 2025/4/24.
+//  Updated on 2025/5/15.
 //
 
 import SwiftUI
@@ -17,8 +18,16 @@ struct OverviewView: View {
     @AppStorage("currentAmount") private var currentAmount: Double?
     @AppStorage("targetYear") private var targetYear: Int?
     
-    // 股票服務
-    private let stockService = LocalStockService()
+    // 狀態變數
+    @State private var totalValue: Double = 0
+    @State private var annualDividend: Double = 0
+    @State private var roi: Double = 0
+    @State private var dividendYield: Double = 0
+    @State private var isLoading: Bool = true
+    @State private var currentPrices: [String: Double] = [:]
+
+    // 服務
+    private let stockValueService = StockValueService.shared
     
     var body: some View {
         NavigationStack {
@@ -51,6 +60,11 @@ struct OverviewView: View {
             }
         }
         .onAppear {
+            // 載入數據
+            Task {
+                await loadInvestmentData()
+            }
+            
             // 添加清除數據的通知觀察者
             NotificationCenter.default.addObserver(
                 forName: Notification.Name("ClearAllData"),
@@ -67,8 +81,27 @@ struct OverviewView: View {
             // 移除觀察者
             NotificationCenter.default.removeObserver(self)
         }
+        .onChange(of: stocks) { _, _ in
+            // 股票資料變更時重新載入
+            Task {
+                await loadInvestmentData()
+            }
+        }
     }
     
+    // 載入投資數據
+    private func loadInvestmentData() async {
+        isLoading = true
+        
+        // 使用統一的服務載入數據
+        currentPrices = await stockValueService.getCurrentPrices(for: stocks)
+        totalValue = await stockValueService.calculateTotalValue(for: stocks, currentPrices: currentPrices)
+        annualDividend = stockValueService.calculateAnnualDividend(for: stocks)
+        roi = await stockValueService.calculateROI(for: stocks, currentPrices: currentPrices)
+        dividendYield = await stockValueService.calculateDividendYield(for: stocks, currentPrices: currentPrices)
+        
+        isLoading = false
+    }
     
     // 投資總覽卡片 - 使用 GroupBox 和細分的 MainMetricCard
     private var investmentOverviewCard: some View {
@@ -76,19 +109,26 @@ struct OverviewView: View {
             HStack(spacing: 15) {
                 MainMetricCard(
                     title: "總市值",
-                    value: formatCurrency(calculateTotalValue()),
-                    change: formatPercentage(calculateROI()),
-                    isPositive: calculateROI() >= 0
+                    value: formatCurrency(totalValue),
+                    change: formatPercentage(roi),
+                    isPositive: roi >= 0
                 )
                 
                 MainMetricCard(
                     title: "年化股利",
-                    value: formatCurrency(calculateAnnualDividend()),
-                    change: "\(Int(calculateDividendYield() * 100) / 100)%",
+                    value: formatCurrency(annualDividend),
+                    change: "\(Int(dividendYield * 100) / 100)%",
                     isPositive: true
                 )
             }
             .padding(.vertical, 8)
+            .overlay {
+                if isLoading {
+                    ProgressView()
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(10)
+                }
+            }
         }
         .groupBoxStyle(TransparentGroupBox())
     }
@@ -144,7 +184,7 @@ struct OverviewView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(plans) { plan in
-                                PlanCardPreview(plan: plan,stocks: $stocks, banks: $banks)
+                                PlanCardPreview(plan: plan, stocks: $stocks, banks: $banks)
                             }
                         }
                     }
@@ -230,16 +270,6 @@ struct OverviewView: View {
             }
         }
     }
-
-    // 獲取第一個規劃的方法
-    private func getFirstPlan() -> InvestmentPlan? {
-        if let planData = UserDefaults.standard.data(forKey: "investmentPlans"),
-           let plans = try? JSONDecoder().decode([InvestmentPlan].self, from: planData),
-           let firstPlan = plans.first {
-            return firstPlan
-        }
-        return nil
-    }
     
     // 我的庫存卡片 - 統一使用 GroupBox
     private var myStocksCard: some View {
@@ -268,7 +298,8 @@ struct OverviewView: View {
                                 banks: $banks,
                                 stocks: $stocks,
                                 watchlist: $watchlist,
-                                bank: bank
+                                bank: bank,
+                                currentPrices: currentPrices
                             )
                         }
                     }
@@ -359,85 +390,6 @@ struct OverviewView: View {
     
     // MARK: - 輔助方法
     
-    // 計算總市值
-    private func calculateTotalValue() -> Double {
-        let currentPrices = getCurrentPrices()
-        return stocks.reduce(0) { total, stock in
-            guard let currentPrice = currentPrices[stock.symbol] else { return total }
-            
-            // 一般持股市值
-            let normalValue = Double(stock.shares) * currentPrice
-            
-            // 定期定額市值（已執行的交易）
-            let regularValue = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { sum, transaction in
-                    sum + (Double(transaction.shares) * currentPrice)
-                } ?? 0
-                
-            return total + normalValue + regularValue
-        }
-    }
-    
-    // 計算年化股利
-    private func calculateAnnualDividend() -> Double {
-        stocks.reduce(0) { total, stock in
-            // 一般持股的年化股利
-            let normalDividend = Double(stock.shares) * stock.dividendPerShare * Double(stock.frequency)
-            
-            // 定期定額的年化股利（已執行的交易）
-            let regularShares = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { sum, transaction in
-                    sum + transaction.shares
-                } ?? 0
-            let regularDividend = Double(regularShares) * stock.dividendPerShare * Double(stock.frequency)
-            
-            return total + normalDividend + regularDividend
-        }
-    }
-    
-    // 計算投資報酬率
-    private func calculateROI() -> Double {
-        let totalValue = calculateTotalValue()
-        
-        let totalInvestment = stocks.reduce(0) { total, stock in
-            // 一般持股成本
-            let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
-            
-            // 定期定額成本（已執行的交易）
-            let regularCost = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { sum, transaction in
-                    sum + transaction.amount
-                } ?? 0
-                
-            return total + normalCost + regularCost
-        }
-        
-        return totalInvestment > 0 ? ((totalValue - totalInvestment) / totalInvestment) * 100 : 0
-    }
-    
-    // 計算股利殖利率
-    private func calculateDividendYield() -> Double {
-        let totalValue = calculateTotalValue()
-        let annualDividend = calculateAnnualDividend()
-        
-        return totalValue > 0 ? (annualDividend / totalValue) * 100 : 0
-    }
-    
-    // 獲取當前股價
-    private func getCurrentPrices() -> [String: Double] {
-        var prices: [String: Double] = [:]
-        
-        // 由於是非同步方法，這裡假設值並返回
-        for stock in stocks {
-            prices[stock.symbol] = Double.random(in: 90...120)
-        }
-        
-        return prices
-    }
-    
     // 格式化金額
     private func formatCurrency(_ value: Double) -> String {
         return "$\(Int(value).formattedWithComma)"
@@ -465,56 +417,26 @@ struct OverviewView: View {
     }
 }
 
-// BankListSummaryView 中的 MainMetricCard 風格
+// BankCardPreview 使用統一的 StockValueService
 struct BankCardPreview: View {
     @Binding var banks: [Bank]
     @Binding var stocks: [Stock]
     @Binding var watchlist: [WatchStock]
     
     let bank: Bank
-//    let stocks: [Stock]
+    var currentPrices: [String: Double] = [:]
+    
+    // 狀態變數
+    @State private var totalValue: Double = 0
+    @State private var annualDividend: Double = 0
+    @State private var isLoading: Bool = true
+    
+    // 服務
+    private let stockValueService = StockValueService.shared
     
     // 該銀行的股票
     private var bankStocks: [Stock] {
         stocks.filter { $0.bankId == bank.id }
-    }
-    
-    // 計算總市值
-    private var totalValue: Double {
-        let currentPrices = getCurrentPrices()
-        return bankStocks.reduce(0) { total, stock in
-            guard let currentPrice = currentPrices[stock.symbol] else { return total }
-            
-            // 一般持股市值
-            let normalValue = Double(stock.shares) * currentPrice
-            
-            // 定期定額市值（已執行的交易）
-            let regularValue = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { sum, transaction in
-                    sum + (Double(transaction.shares) * currentPrice)
-                } ?? 0
-                
-            return total + normalValue + regularValue
-        }
-    }
-    
-    // 計算年化股利
-    private var annualDividend: Double {
-        bankStocks.reduce(0) { total, stock in
-            // 一般持股的年化股利
-            let normalDividend = Double(stock.shares) * stock.dividendPerShare * Double(stock.frequency)
-            
-            // 定期定額的年化股利（已執行的交易）
-            let regularShares = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { sum, transaction in
-                    sum + transaction.shares
-                } ?? 0
-            let regularDividend = Double(regularShares) * stock.dividendPerShare * Double(stock.frequency)
-            
-            return total + normalDividend + regularDividend
-        }
     }
     
     var body: some View {
@@ -531,46 +453,61 @@ struct BankCardPreview: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
                 
-                Text("$\(Int(totalValue).formattedWithComma)")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.blue)
-                
-                HStack {
-                    Text("\(bankStocks.count) 支股票")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else {
+                    Text("$\(Int(totalValue).formattedWithComma)")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.blue)
                     
-                    Spacer()
-                    
-                    HStack(spacing: 2) {
-                        Image(systemName: "arrow.down.forward.circle.fill")
-                            .foregroundColor(.green)
-                            .font(.system(size: 10))
-                        Text("$\(Int(annualDividend).formattedWithComma)")
+                    HStack {
+                        Text("\(bankStocks.count) 支股票")
                             .font(.system(size: 12))
-                            .foregroundColor(.green)
+                            .foregroundColor(.gray)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 2) {
+                            Image(systemName: "arrow.down.forward.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 10))
+                            Text("$\(Int(annualDividend).formattedWithComma)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.green)
+                        }
                     }
                 }
             }
             .padding(12)
             .frame(width: 170, height: 110)
             .cardBackground()
+            .onAppear {
+                Task {
+                    await loadBankData()
+                }
+            }
         }
         .buttonStyle(PlainButtonStyle())
     }
     
-    // 獲取當前股價的輔助方法
-    private func getCurrentPrices() -> [String: Double] {
-        var prices: [String: Double] = [:]
+    // 載入銀行數據
+    private func loadBankData() async {
+        isLoading = true
         
-        bankStocks.forEach { stock in
-            prices[stock.symbol] = Double.random(in: 90...120)
-        }
+        // 使用現有價格或獲取新價格
+        let prices = !currentPrices.isEmpty ? currentPrices :
+            await stockValueService.getCurrentPrices(for: bankStocks)
         
-        return prices
+        // 計算市值和股利
+        totalValue = await stockValueService.calculateBankTotalValue(
+            stocks: stocks,
+            bankId: bank.id,
+            currentPrices: prices
+        )
+        
+        annualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
+        
+        isLoading = false
     }
-}
-
-#Preview {
-    ContentView()
 }

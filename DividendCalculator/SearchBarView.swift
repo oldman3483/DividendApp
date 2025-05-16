@@ -90,7 +90,3 @@ struct CustomTextFieldStyle: TextFieldStyle {
             )
     }
 }
-
-#Preview {
-    ContentView()
-}

@@ -131,9 +131,15 @@ struct PortfolioView: View {
     @State private var isEditing = false
     @State private var showingSearchView = false
     @State private var selectedStockType: StockType = .all
+    @State private var portfolioMetrics = PortfolioMetrics()
+    
     
     let bankId: UUID
     let bankName: String
+    
+    //服務
+    private let stockValueService = StockValueService.shared
+    
     
     // 定義股票類型枚舉
     enum StockType: String, CaseIterable {
@@ -141,6 +147,18 @@ struct PortfolioView: View {
         case regularInvestment = "定期定額"
         case normal = "一般持股"
     }
+    
+    // PortfolioMetrics結構體
+    private struct PortfolioMetrics {
+        var totalValue: Double = 0
+        var dailyChange: Double = 0
+        var dailyChangePercentage: Double = 0
+        var totalProfitLoss: Double = 0
+        var totalROI: Double = 0
+        var totalAnnualDividend: Double = 0
+        var dividendYield: Double = 0
+    }
+    
     
     // 替換原有的計算屬性
     private func getBankStocks() -> [Stock] {
@@ -170,43 +188,9 @@ struct PortfolioView: View {
             return getNormalStocks().reduce(0) { $0 + $1.calculateTotalAnnualDividend() }
         }
     }
+    
     private func calculateTotalInvestment() -> Double {
-        switch selectedStockType {
-        case .all:
-            // 計算所有股票的總投資成本
-            return getBankStocks().reduce(0) { sum, stock in
-                // 一般持股投資成本
-                let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
-                
-                // 定期定額投資成本(已執行的交易)
-                let regularCost = stock.regularInvestment?.transactions?
-                    .filter { $0.isExecuted }
-                    .reduce(0) { sum, transaction in
-                        sum + transaction.amount
-                    } ?? 0
-                
-                return sum + normalCost + regularCost
-            }
-        case .regularInvestment:
-            // 計算定期定額股票的總投資成本
-            return getBankStocks()
-                .filter { $0.regularInvestment != nil }
-                .reduce(0) { sum, stock in
-                    let regularCost = stock.regularInvestment?.transactions?
-                        .filter { $0.isExecuted }
-                        .reduce(0) { sum, transaction in
-                            sum + transaction.amount
-                        } ?? 0
-                    return sum + regularCost
-                }
-        case .normal:
-            // 計算一般持股的總投資成本
-            return getBankStocks()
-                .filter { $0.regularInvestment == nil }
-                .reduce(0) { sum, stock in
-                    return sum + (Double(stock.shares) * (stock.purchasePrice ?? 0))
-                }
-        }
+        return stockValueService.calculateTotalInvestment(for: getBankStocks())
     }
     
     
@@ -451,46 +435,59 @@ struct PortfolioView: View {
                 bankId: bankId
             )
         }
+        .task {
+            await updatePortfolioMetrics()
+        }
     }
     
     // 計算當日損益及百分比 - 簡化版本
     private func calculateDailyChange() -> (Double, Double) {
-        // 獲取銀行的股票
+        Task {
+            await updatePortfolioMetrics()
+        }
+        return (portfolioMetrics.dailyChange, portfolioMetrics.dailyChangePercentage)
+    }
+    
+    
+    private func updatePortfolioMetrics() async {
+        // 獲取該銀行的股票
         let bankStocks = stocks.filter { $0.bankId == bankId }
         
-        // 模擬當日損益 (在實際場景中，你應該使用真實的股價數據)
-        var totalChange: Double = 0
-        var totalValue: Double = 0
+        // 獲取價格數據
+        let currentPrices = await stockValueService.getCurrentPrices(for: bankStocks)
+        let previousPrices = await stockValueService.getPreviousDayPrices(for: bankStocks)
         
-        for stock in bankStocks {
-            // 計算模擬的當日漲跌百分比 (-1.5% 到 2% 之間)
-            let changeRate = Double.random(in: -0.015...0.02)
-            
-            // 獲取模擬的當前股價 (基於購買價格加上隨機波動)
-            let currentPrice = (stock.purchasePrice ?? 100) * (1 + Double.random(in: -0.1...0.2))
-            
-            // 計算昨日股價
-            let yesterdayPrice = currentPrice / (1 + changeRate)
-            
-            // 計算總持股數
-            let normalShares = stock.shares
-            let regularShares = stock.regularInvestment?.transactions?
-                .filter { $0.isExecuted }
-                .reduce(0) { $0 + $1.shares } ?? 0
-            let totalShares = normalShares + regularShares
-            
-            // 計算當日變動金額
-            let stockChange = (currentPrice - yesterdayPrice) * Double(totalShares)
-            totalChange += stockChange
-            
-            // 累計市值 (用於計算百分比)
-            totalValue += yesterdayPrice * Double(totalShares)
+        // 計算總市值
+        let totalValue = await stockValueService.calculateTotalValue(for: bankStocks, currentPrices: currentPrices)
+        
+        // 計算總投資成本
+        let totalInvestment = stockValueService.calculateTotalInvestment(for: bankStocks)
+        
+        // 計算當日損益和漲跌幅
+        let (dailyChange, dailyChangePercentage) = stockValueService.calculateDailyChange(
+            for: bankStocks,
+            currentPrices: currentPrices,
+            previousPrices: previousPrices
+        )
+        
+        // 計算總報酬和報酬率
+        let totalProfitLoss = totalValue - totalInvestment
+        let totalROI = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0
+        
+        // 計算年化股利和股利率
+        let totalAnnualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
+        let dividendYield = totalValue > 0 ? (totalAnnualDividend / totalValue) * 100 : 0
+        
+        // 更新狀態
+        await MainActor.run {
+            self.portfolioMetrics.totalValue = totalValue
+            self.portfolioMetrics.dailyChange = dailyChange
+            self.portfolioMetrics.dailyChangePercentage = dailyChangePercentage
+            self.portfolioMetrics.totalProfitLoss = totalProfitLoss
+            self.portfolioMetrics.totalROI = totalROI
+            self.portfolioMetrics.totalAnnualDividend = totalAnnualDividend
+            self.portfolioMetrics.dividendYield = dividendYield
         }
-        
-        // 計算變動百分比
-        let changePercentage = totalValue > 0 ? (totalChange / totalValue) * 100 : 0
-        
-        return (totalChange, changePercentage)
     }
 }
     

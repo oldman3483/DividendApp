@@ -44,7 +44,3 @@ struct BankCardView: View {
         )
     }
 }
-
-#Preview {
-    ContentView()
-}

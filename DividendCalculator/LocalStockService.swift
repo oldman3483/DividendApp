@@ -27,40 +27,40 @@ class LocalStockService {
     private let volatilityRange: ClosedRange<Double> = -0.05...0.05  // 5% 的波動範圍
     private let trendBias: ClosedRange<Double> = -0.02...0.03       // 偏向上漲的趨勢
     
-    // 記錄每個股票的最後價格
-    private var lastPrices = [String: Double]()
+    // 使用緩存管理器
+    private let priceCache = StockPriceCache.shared
 
     // 取得指定日期的收盤價，加入更真實的價格變動
     func getStockPrice(symbol: String, date: Date) async -> Double? {
-        // 取得基礎價格
-        let basePrice = mockStocks.first { $0.0 == symbol }?.4 ?? 0
-        
-        // 如果沒有最後價格，初始化為基礎價格
-        if lastPrices[symbol] == nil {
-            lastPrices[symbol] = basePrice
+        // 使用緩存，並提供計算價格的閉包
+        return priceCache.getStockPrice(symbol: symbol, date: date) {
+            // 以下是原始的計算邏輯，但現在只有在緩存未命中時才會執行
+            let basePrice = self.mockStocks.first { $0.0 == symbol }?.4 ?? 0
+            
+            // 根據日期和股票代號生成種子
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.year, .month, .day], from: date)
+            let dateSeed = (components.year ?? 2025) * 10000 + (components.month ?? 1) * 100 + (components.day ?? 1)
+            
+            var randomGenerator = SystemRandomNumberGenerator()
+            let combinedSeedString = "\(symbol)_\(dateSeed)"
+            let seedData = combinedSeedString.data(using: .utf8)!
+            let seedUInt = seedData.withUnsafeBytes { $0.load(as: UInt64.self) }
+            randomGenerator.seed = seedUInt
+            
+            let randomVolatility = Double.random(in: self.volatilityRange, using: &randomGenerator)
+            let trendComponent = Double.random(in: self.trendBias, using: &randomGenerator)
+            
+            let variation = randomVolatility + trendComponent
+            let newPrice = basePrice * (1 + variation)
+            
+            let maxDeviation = basePrice * 0.2
+            let minPrice = basePrice - maxDeviation
+            let maxPrice = basePrice + maxDeviation
+            let finalPrice = min(max(newPrice, minPrice), maxPrice)
+            
+            return finalPrice
         }
-        
-        // 獲取最後價格
-        let lastPrice = lastPrices[symbol] ?? basePrice
-        
-        // 生成隨機波動
-        let randomVolatility = Double.random(in: volatilityRange)
-        let trendComponent = Double.random(in: trendBias)
-        
-        // 計算新價格，綜合考慮波動性和趨勢
-        let variation = randomVolatility + trendComponent
-        var newPrice = lastPrice * (1 + variation)
-        
-        // 加入價格限制，避免價格過度偏離基礎價格
-        let maxDeviation = basePrice * 0.2 // 最大允許偏離基準價格的 20%
-        let minPrice = basePrice - maxDeviation
-        let maxPrice = basePrice + maxDeviation
-        newPrice = min(max(newPrice, minPrice), maxPrice)
-        
-        // 更新最後價格
-        lastPrices[symbol] = newPrice
-        
-        return newPrice
     }
     
     // 搜尋股票（保持原有功能）
@@ -87,5 +87,19 @@ class LocalStockService {
     // 獲取股利頻率（保持原有功能）
     func getTaiwanStockFrequency(symbol: String) async -> Int? {
         return mockStocks.first { $0.0 == symbol }?.3
+    }
+}
+
+// 擴展 SystemRandomNumberGenerator 以支援自定義種子
+extension SystemRandomNumberGenerator {
+    private static var _seed: UInt64 = 0
+    
+    var seed: UInt64 {
+        get { Self._seed }
+        set { Self._seed = newValue }
+    }
+    
+    mutating func seed(_ newSeed: UInt64) {
+        seed = newSeed
     }
 }

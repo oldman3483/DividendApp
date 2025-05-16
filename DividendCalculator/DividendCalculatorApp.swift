@@ -10,7 +10,6 @@ import SwiftUI
 @main
 struct DividendCalculatorApp: App {
     @StateObject private var networkMonitor = NetworkMonitor()
-//    @StateObject private var adManager = AdMobManager.shared // 添加這行
     
     var body: some Scene {
         WindowGroup {

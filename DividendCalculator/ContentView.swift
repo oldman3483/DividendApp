@@ -8,6 +8,60 @@
 
 import SwiftUI
 
+// 全局股價服務，作為單例來提供一致的價格數據
+class GlobalStockPriceService {
+    static let shared = GlobalStockPriceService()
+    
+    private let stockService = LocalStockService()
+    private var priceCache: [String: [String: Double]] = [:] // symbol -> date -> price
+    private let dateFormatter = DateFormatter()
+    
+    private init() {
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+    }
+    
+    // 獲取指定日期的股價，確保相同的日期和股票代號總是返回相同的價格
+    func getStockPrice(symbol: String, date: Date) async -> Double? {
+        let dateString = dateFormatter.string(from: date)
+        
+        // 檢查緩存
+        if let symbolCache = priceCache[symbol], let price = symbolCache[dateString] {
+            return price
+        }
+        
+        // 從本地服務獲取價格
+        if let price = await stockService.getStockPrice(symbol: symbol, date: date) {
+            // 添加到緩存
+            if priceCache[symbol] == nil {
+                priceCache[symbol] = [:]
+            }
+            priceCache[symbol]?[dateString] = price
+            return price
+        }
+        
+        return nil
+    }
+    
+    // 獲取多個股票的當前價格
+    func getCurrentPrices(for symbols: [String]) async -> [String: Double] {
+        var prices: [String: Double] = [:]
+        let today = Date()
+        
+        for symbol in symbols {
+            if let price = await getStockPrice(symbol: symbol, date: today) {
+                prices[symbol] = price
+            }
+        }
+        
+        return prices
+    }
+    
+    // 清除緩存（例如在日期變更時）
+    func clearCache() {
+        priceCache.removeAll()
+    }
+}
+
 struct ContentView: View {
     // MARK: - 狀態變數
     @AppStorage("isLoggedIn") private var isLoggedIn = false
@@ -37,10 +91,12 @@ struct ContentView: View {
     @AppStorage("userId") private var userId = ""
     @AppStorage("loginMethod") private var loginMethod = ""
     @AppStorage("offlineMode") private var offlineMode = false
-
+    
     
     let stockService = LocalStockService() // 保留本地服務用於模擬價格變動
     let repository = StockRepository.shared // 添加 repository 用於 API 數據
+    
+    private let globalStockService = GlobalStockPriceService.shared
     
     // MARK: - 視圖
     var body: some View {
@@ -191,6 +247,9 @@ struct ContentView: View {
     // MARK: - 方法
     private func setupInitialState() {
         setupAppearance()
+        
+        // 重置價格緩存
+        GlobalStockPriceService.shared.clearCache()
         
         // 使用 Task 來進行非同步加載
         Task {
@@ -449,6 +508,3 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
-}
