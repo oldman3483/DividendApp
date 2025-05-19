@@ -39,7 +39,7 @@ struct PlanningListView: View {
                 }
                 
                 // 新增規劃按鈕
-                AddingButton(action: { showingAddPlan = true })
+                FloatingActionButton(action: { showingAddPlan = true })
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

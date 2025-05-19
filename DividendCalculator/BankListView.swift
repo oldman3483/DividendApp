@@ -55,7 +55,7 @@ struct BankListView: View {
                 }
                 
                 // 新增銀行按鈕
-                AddingButton(action: { showingAddBank = true })
+                FloatingActionButton(action: { showingAddBank = true })
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
