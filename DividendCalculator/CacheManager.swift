@@ -58,9 +58,8 @@ class StockPriceCache {
         }
         
         let price = calculatePrice()
-                priceCache[cacheKey] = price
-                manageCacheSize()
-                return price
+        priceCache[cacheKey] = price
+        return price
     }
     
     // 創建緩存鍵

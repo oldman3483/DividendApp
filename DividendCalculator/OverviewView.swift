@@ -163,7 +163,22 @@ struct OverviewView: View {
                             .foregroundColor(.gray.opacity(0.8))
                             .multilineTextAlignment(.center)
                         
-                        NavigationLink(destination: GoalCalculatorView()) {
+                        NavigationLink(destination: GoalCalculatorView(onSave: { newPlan in
+                            // 這裡添加保存新計劃的邏輯
+                            // 可以直接保存到UserDefaults或使用相同的邏輯
+                            if let planData = UserDefaults.standard.data(forKey: "investmentPlans"),
+                               var plans = try? JSONDecoder().decode([InvestmentPlan].self, from: planData) {
+                                plans.append(newPlan)
+                                if let encodedPlans = try? JSONEncoder().encode(plans) {
+                                    UserDefaults.standard.set(encodedPlans, forKey: "investmentPlans")
+                                }
+                            } else {
+                                let plans = [newPlan]
+                                if let encodedPlans = try? JSONEncoder().encode(plans) {
+                                    UserDefaults.standard.set(encodedPlans, forKey: "investmentPlans")
+                                }
+                            }
+                        })) {
                             HStack {
                                 Image(systemName: "chart.line.uptrend.xyaxis")
                                     .foregroundColor(.white)
