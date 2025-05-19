@@ -436,9 +436,6 @@ struct PortfolioView: View {
     
     // 計算當日損益及百分比 - 簡化版本
     private func calculateDailyChange() -> (Double, Double) {
-        Task {
-            await updatePortfolioMetrics()
-        }
         return (portfolioMetrics.dailyChange, portfolioMetrics.dailyChangePercentage)
     }
     

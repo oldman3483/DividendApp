@@ -166,7 +166,11 @@ struct ContentView: View {
             // 移除觀察者
             NotificationCenter.default.removeObserver(self)
         }
-        .onChange(of: stocks) { oldValue, newValue in saveData() }
+        .onChange(of: stocks) { oldValue, newValue in
+            if oldValue != newValue {
+                saveData()
+            }
+        }
         .onChange(of: watchlist) { oldValue, newValue in saveData() }
         .onChange(of: banks) { oldValue, newValue in
             if let firstBank = newValue.first {

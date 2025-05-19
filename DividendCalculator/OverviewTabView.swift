@@ -97,7 +97,7 @@ struct OverviewTabView: View {
                 GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: 15) {
-                summaryCard(title: "總投資金額", value: "$\(Int(metrics.totalInvestment).formattedWithComma)", color: .blue)
+                summaryCard(title: "總投資成本", value: "$\(Int(metrics.totalInvestment).formattedWithComma)", color: .blue)
                 summaryCard(title: "年化股利", value: "$\(Int(metrics.annualDividend).formattedWithComma)", color: .green)
                 summaryCard(title: "平均殖利率", value: String(format: "%.2f%%", metrics.averageYield), color: .yellow)
                 summaryCard(title: "持股數量", value: "\(metrics.stockCount)", color: .purple)

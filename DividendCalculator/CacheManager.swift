@@ -9,6 +9,16 @@ import Foundation
 
 // 股價緩存管理器
 class StockPriceCache {
+    
+    // 加入緩存大小限制
+    private let maxCacheSize = 1000
+        
+        // 修改緩存清理方法
+    func clearCache() {
+        priceCache.removeAll(keepingCapacity: true)
+        updateCurrentDateString()
+    }
+    
     static let shared = StockPriceCache()
     
     // 日期格式化工具
@@ -20,6 +30,15 @@ class StockPriceCache {
     
     // 緩存的股價數據
     private var priceCache: [String: Double] = [:]
+    
+    // 添加緩存管理方法
+    private func manageCacheSize() {
+        if priceCache.count > maxCacheSize {
+            // 只保留最近使用的項目
+            let keysToRemove = priceCache.keys.dropLast(maxCacheSize / 2)
+            keysToRemove.forEach { priceCache.removeValue(forKey: $0) }
+        }
+    }
     
     // 今日日期字串，用於重設緩存
     private var currentDateString: String = ""
@@ -39,14 +58,9 @@ class StockPriceCache {
         }
         
         let price = calculatePrice()
-        priceCache[cacheKey] = price
-        return price
-    }
-    
-    // 清空緩存
-    func clearCache() {
-        priceCache.removeAll()
-        updateCurrentDateString()
+                priceCache[cacheKey] = price
+                manageCacheSize()
+                return price
     }
     
     // 創建緩存鍵

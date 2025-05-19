@@ -236,15 +236,17 @@ struct PlanningDetailView: View {
         
         // 在單一 Task 中處理所有更新，避免競爭條件
         Task {
-            // 1. 首先更新股息信息
-            await updateStockDividendInfo(stock: newStock)
-            
-            // 2. 然後獲取最新的股票並更新交易記錄
-            if var updatedStock = stocks.first(where: { $0.id == newStock.id }) {
-                // 確保在生成交易記錄前股票已經有正確的股息信息
+            // 獲取股票的副本，而不是直接使用添加的股票
+            if let stockToUpdate = stocks.first(where: { $0.id == newStock.id }) {
+                var updatedStock = stockToUpdate
+                
+                // 1. 更新股息信息
+                await updateStockDividendInfo(stock: updatedStock)
+                
+                // 2. 更新交易記錄
                 await updatedStock.updateRegularInvestmentTransactions(stockService: stockService)
                 
-                // 在主線程更新股票
+                // 3. 在主線程更新股票
                 await MainActor.run {
                     if let index = stocks.firstIndex(where: { $0.id == newStock.id }) {
                         stocks[index] = updatedStock
