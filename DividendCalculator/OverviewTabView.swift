@@ -117,7 +117,7 @@ struct OverviewTabView: View {
             
             VStack(spacing: 12) {
                 HStack {
-                    Text("總報酬")
+                    Text("投資報酬")
                         .foregroundColor(.gray)
                     Spacer()
                     HStack(spacing: 4) {

@@ -378,27 +378,33 @@ struct GoalCalculatorView: View {
         .cornerRadius(10)
     }
     // 計算特定年份的預測值
-        private func calculateForecastValue(year: Int) -> (amount: Double, percentage: Double) {
-            let initialAmount = 0.0
-            let annualRate = getHistoricalReturn() / 100
-            let periodicAmount = requiredAmount
-            
-            // 總投資金額
-            let totalInvestment = periodicAmount * Double(investmentFrequency * year)
-            
-            // 計算未來值
-            var futureValue = initialAmount
-            for _ in 1...(investmentFrequency * year) {
-                futureValue = futureValue * (1 + annualRate / Double(investmentFrequency))
-                futureValue += periodicAmount
-            }
-            
-            // 計算報酬百分比
-            let profit = futureValue - totalInvestment
-            let percentage = totalInvestment > 0 ? (profit / totalInvestment) * 100 : 0
-            
-            return (futureValue, percentage)
+    private func calculateForecastValue(year: Int) -> (amount: Double, percentage: Double) {
+        // 計算初始投資金額
+        let initialAmount = 0.0
+        let annualRate = getHistoricalReturn() / 100
+        let periodicAmount = requiredAmount
+        
+        // 總投資金額
+        let totalInvestment = periodicAmount * Double(investmentFrequency * year)
+        
+        // 計算未來值
+        var futureValue = initialAmount
+        for _ in 1...(investmentFrequency * year) {
+            futureValue = futureValue * (1 + annualRate / Double(investmentFrequency))
+            futureValue += periodicAmount
         }
+        
+        // 如果是目標年份，直接返回目標金額
+        if let goalAmount = Double(goalAmount), year == investmentYears {
+            return (goalAmount, ((goalAmount - totalInvestment) / totalInvestment) * 100)
+        }
+        
+        // 計算報酬百分比
+        let profit = futureValue - totalInvestment
+        let percentage = totalInvestment > 0 ? (profit / totalInvestment) * 100 : 0
+        
+        return (futureValue, percentage)
+    }
         
         // 獲取歷史報酬率
     private func getHistoricalReturn() -> Double {

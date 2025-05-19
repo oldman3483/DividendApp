@@ -373,35 +373,40 @@ struct PlanningDetailView: View {
     }
     
     // 計算特定年份的預測值
-    private func calculateForecastValue(year: Int, plan: InvestmentPlan) -> (amount: Double, percentage: Double) {
-        if let projectionData = plan.projectionData,
-           let point = projectionData.first(where: { Int($0.year) == year }) {
-            let principal = point.principal
-            let profit = point.amount - principal
-            let percentage = principal > 0 ? (profit / principal) * 100 : 0
-            return (point.amount, percentage)
-        }
-        
-        // 如果沒有找到對應的數據點，進行簡單計算
-        let annualRate = 0.09 // 假設年化報酬率為9%
-        let periodicAmount = plan.requiredAmount
-        
-        // 總投資金額
-        let totalInvestment = periodicAmount * Double(plan.investmentFrequency * year)
-        
-        // 計算未來值
-        var futureValue = 0.0
-        for _ in 1...(plan.investmentFrequency * year) {
-            futureValue = futureValue * (1 + annualRate / Double(plan.investmentFrequency))
-            futureValue += periodicAmount
-        }
-        
-        // 計算報酬百分比
-        let profit = futureValue - totalInvestment
-        let percentage = totalInvestment > 0 ? (profit / totalInvestment) * 100 : 0
-        
-        return (futureValue, percentage)
+private func calculateForecastValue(year: Int, plan: InvestmentPlan) -> (amount: Double, percentage: Double) {
+    if let projectionData = plan.projectionData,
+       let point = projectionData.first(where: { Int($0.year) == year }) {
+        let principal = point.principal
+        let profit = point.amount - principal
+        let percentage = principal > 0 ? (profit / principal) * 100 : 0
+        return (point.amount, percentage)
     }
+    
+    // 如果沒有找到對應的數據點，進行簡單計算
+    let annualRate = 0.09 // 假設年化報酬率為9%
+    let periodicAmount = plan.requiredAmount
+    
+    // 總投資金額
+    let totalInvestment = periodicAmount * Double(plan.investmentFrequency * year)
+    
+    // 計算未來值
+    var futureValue = 0.0
+    for _ in 1...(plan.investmentFrequency * year) {
+        futureValue = futureValue * (1 + annualRate / Double(plan.investmentFrequency))
+        futureValue += periodicAmount
+    }
+    
+    // 如果是目標年份，直接返回目標金額
+    if year == plan.investmentYears {
+        return (plan.targetAmount, ((plan.targetAmount - totalInvestment) / totalInvestment) * 100)
+    }
+    
+    // 計算報酬百分比
+    let profit = futureValue - totalInvestment
+    let percentage = totalInvestment > 0 ? (profit / totalInvestment) * 100 : 0
+    
+    return (futureValue, percentage)
+}
     
 
 struct ConvertToPlanView: View {

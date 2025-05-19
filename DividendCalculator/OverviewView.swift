@@ -42,9 +42,6 @@ struct OverviewView: View {
                     // 我的庫存區塊
                     myStocksCard
                     
-                    // 投資摘要區塊
-                    investmentSummaryCard
-                    
                 }
                 .padding(.horizontal)
                 .padding(.top, 10)
@@ -319,52 +316,6 @@ struct OverviewView: View {
                         }
                     }
                 }
-            }
-            .padding()
-        }
-        .groupBoxStyle(TransparentGroupBox())
-    }
-    
-    // 投資摘要卡片 - 統一使用 GroupBox 和間距
-    private var investmentSummaryCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 15) {
-                Text("投資摘要")
-                    .font(.headline)
-                
-                HStack {
-                    Text("風險評級")
-                        .foregroundColor(.gray)
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Text("中等")
-                            .foregroundColor(.yellow)
-                        Image(systemName: "exclamationmark.circle")
-                            .foregroundColor(.yellow)
-                            .font(.system(size: 12))
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("資產配置")
-                        .font(.system(size: 15, weight: .medium))
-                        .padding(.bottom, 2)
-                    
-                    assetAllocationRow(name: "半導體", percentage: 40)
-                    assetAllocationRow(name: "金融", percentage: 25)
-                    assetAllocationRow(name: "電子", percentage: 20)
-                    assetAllocationRow(name: "其他", percentage: 15)
-                }
-                .padding(.top, 4)
-                
-                HStack {
-                    Text("近期股利預測")
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Text("$15,000")
-                        .foregroundColor(.green)
-                }
-                .padding(.top, 5)
             }
             .padding()
         }
