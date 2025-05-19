@@ -18,6 +18,7 @@ struct OverviewView: View {
     @AppStorage("currentAmount") private var currentAmount: Double?
     @AppStorage("targetYear") private var targetYear: Int?
     
+    
     // 狀態變數
     @State private var totalValue: Double = 0
     @State private var annualDividend: Double = 0
@@ -25,6 +26,8 @@ struct OverviewView: View {
     @State private var dividendYield: Double = 0
     @State private var isLoading: Bool = true
     @State private var currentPrices: [String: Double] = [:]
+    @State private var totalInvestment: Double = 0
+
 
     // 服務
     private let portfolioManager = PortfolioManager.shared
@@ -96,36 +99,72 @@ struct OverviewView: View {
         annualDividend = portfolioManager.calculateAnnualDividend(for: stocks)
         roi = await portfolioManager.calculateTotalROI(for: stocks, currentPrices: currentPrices)
         dividendYield = totalValue > 0 ? (annualDividend / totalValue) * 100 : 0
+        totalInvestment = portfolioManager.calculateTotalInvestment(for: stocks)
+
         
         isLoading = false
     }
     
-    // 投資總覽卡片 - 使用 GroupBox 和細分的 MainMetricCard
+    // 投資總覽卡片
     private var investmentOverviewCard: some View {
         GroupBox {
-            HStack(spacing: 15) {
-                MainMetricCard(
-                    title: "總市值",
-                    value: formatCurrency(totalValue),
-                    change: formatPercentage(roi),
-                    isPositive: roi >= 0
-                )
+            VStack(alignment: .leading, spacing: 15) {
+                // 標題和查看全部按鈕
+                HStack {
+                    Text("投資總覽")
+                        .font(.headline)
+                    Spacer()
+                    NavigationLink(destination: InvestmentOverviewView(stocks: $stocks)) {
+                        Text("查看全部")
+                            .font(.system(size: 14))
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.bottom, 8)
                 
-                MainMetricCard(
-                    title: "年化股利",
-                    value: formatCurrency(annualDividend),
-                    change: "\(Int(dividendYield * 100) / 100)%",
-                    isPositive: true
-                )
-            }
-            .padding(.vertical, 8)
-            .overlay {
-                if isLoading {
-                    ProgressView()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
+                // 上方顯示總市值和年化股利
+                HStack(spacing: 15) {
+                    MainMetricCard(
+                        title: "總市值",
+                        value: formatCurrency(totalValue),
+                        change: formatPercentage(roi),
+                        isPositive: roi >= 0
+                    )
+                    
+                    MainMetricCard(
+                        title: "年化股利",
+                        value: formatCurrency(annualDividend),
+                        change: "\(Int(dividendYield * 100) / 100)%",
+                        isPositive: true
+                    )
+                }
+                
+                // 下方顯示總報酬率和總投資成本
+                HStack(spacing: 15) {
+                    MainMetricCard(
+                        title: "總報酬率",
+                        value: formatPercentage(roi),
+                        change: formatCurrency(totalValue - totalInvestment),
+                        isPositive: roi >= 0
+                    )
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("總投資成本")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        
+                        Text(formatCurrency(totalInvestment))
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(white: 0.15))
+                    .cornerRadius(12)
                 }
             }
+            .padding()
         }
         .groupBoxStyle(TransparentGroupBox())
     }

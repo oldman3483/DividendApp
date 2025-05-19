@@ -58,7 +58,7 @@ class StockPriceCache {
         }
         
         let price = calculatePrice()
-        priceCache[cacheKey] = price
+//        priceCache[cacheKey] = price
         return price
     }
     

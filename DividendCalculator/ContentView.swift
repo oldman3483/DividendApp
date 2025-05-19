@@ -191,63 +191,6 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - 資料庫連接測試方法
-    func testDatabaseConnection() async {
-        isLoading = true
-        
-        do {
-            print("開始測試資料庫連接...")
-            let dividendResponse = try await APIService.shared.getDividendData(symbol: "0050")
-            
-            var resultMessage = ""
-            
-            // 檢查資料是否成功獲取
-            if dividendResponse.success {
-                resultMessage = "連接成功！共獲取 \(dividendResponse.data.count) 筆0050的股利記錄"
-                print(resultMessage)
-                
-                // 打印第一筆資料作為示例
-                if let firstRecord = dividendResponse.data.first {
-                    let details = """
-                        第一筆資料:
-                        日期: \(firstRecord.date)
-                        股利年度: \(firstRecord.dividendYear)
-                        股利期間: \(firstRecord.dividendPeriod)
-                        現金股利: \(firstRecord.totalCashDividend)
-                        除息日: \(firstRecord.exDividendDate)
-                        """
-                    print(details)
-                    resultMessage += "\n\n共獲取 \(dividendResponse.data.count) 條記錄"
-                }
-            } else {
-                resultMessage = "資料獲取失敗: \(dividendResponse.message ?? "未知錯誤")"
-                print(resultMessage)
-            }
-            
-            // 更新UI顯示測試結果
-            await MainActor.run {
-                testResultMessage = resultMessage
-                showTestResult = true
-                isLoading = false
-            }
-        } catch {
-            let errorMessage = "測試失敗: \(error.localizedDescription)"
-            print(errorMessage)
-            
-            if let apiError = error as? APIError {
-                let apiErrorDetails = "API錯誤: 代碼 \(apiError.code), 訊息: \(apiError.message)"
-                print(apiErrorDetails)
-            }
-            
-            // 更新UI顯示錯誤信息
-            await MainActor.run {
-                testResultMessage = errorMessage
-                showTestResult = true
-                isLoading = false
-            }
-        }
-    }
-    
     // MARK: - 方法
     private func setupInitialState() {
         setupAppearance()

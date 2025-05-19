@@ -92,18 +92,6 @@ struct SettingsView: View {
                             Spacer()
                         }
                     }
-                    // 資料庫連接測試按鈕 (僅在非離線模式下顯示)
-                    if !offlineMode {
-                        Button(action: {
-                            testDatabaseConnection()
-                        }) {
-                            HStack {
-                                Image(systemName: "server.rack")
-                                    .foregroundColor(.blue)
-                                Text("測試資料庫連接")
-                            }
-                        }
-                    }
                 } header: {
                     Text("通知與連線設定")
                 }
@@ -228,110 +216,6 @@ struct SettingsView: View {
             
             // 發送通知以通知其他視圖重置所有數據
             NotificationCenter.default.post(name: Notification.Name("ClearAllData"), object: nil)
-        }
-    }
-        
-    // 資料庫連接測試方法
-    private func testDatabaseConnection() {
-        isTestingDb = true
-        
-        Task {
-            do {
-                print("開始測試資料庫連接...")
-                
-                // 先檢查網絡連接
-                if !NetworkMonitor().isConnected {
-                    throw APIError(code: 1, message: "網絡未連接，請檢查您的網絡設置並確保離線模式已關閉")
-                }
-                
-                // 打印目標URL
-                let baseURL = "https://dividend-app-148949302162.asia-east1.run.app"
-                let path = "get_t_0050_data"
-                print("目標URL: \(baseURL)/\(path)")
-                
-                let dividendResponse = try await APIService.shared.getDividendData(symbol: "0050")
-                
-                var resultMessage = ""
-                
-                // 檢查資料是否成功獲取
-                if dividendResponse.success {
-                    // 處理資料
-                    let processedData = SQLDataProcessor.shared.processDividendData(dividendResponse.data)
-                    let frequency = SQLDataProcessor.shared.calculateDividendFrequency(from: dividendResponse.data)
-                    let dividendPerShare = SQLDataProcessor.shared.calculateDividendPerShare(from: dividendResponse.data)
-                    
-                    resultMessage = "連接成功！共獲取 \(dividendResponse.data.count) 筆0050的股利記錄"
-                    
-                    if let firstProcessed = processedData.first {
-                        resultMessage += "\n\n處理後的第一筆資料:"
-                        resultMessage += "\n股票代號: \(firstProcessed.symbol)"
-                        resultMessage += "\n股利年度: \(firstProcessed.dividendYear)"
-                        resultMessage += "\n股利期間: \(firstProcessed.dividendPeriod)"
-                        resultMessage += "\n除息日: \(formatDate(firstProcessed.exDividendDate) ?? "無")"
-                        resultMessage += "\n發放日: \(formatDate(firstProcessed.distributionDate) ?? "無")"
-                        resultMessage += "\n除息參考價: \(String(format: "%.2f", firstProcessed.exDividendPrice))"
-                        resultMessage += "\n現金股利: \(String(format: "%.2f", firstProcessed.totalCashDividend))"
-                    }
-                    
-                    resultMessage += "\n\n計算結果:"
-                    resultMessage += "\n股利頻率: \(frequency) (1=年配, 2=半年配, 4=季配)"
-                    resultMessage += "\n每股股利: \(String(format: "%.2f", dividendPerShare))"
-                } else {
-                    resultMessage = "資料獲取失敗: \(dividendResponse.message ?? "未知錯誤")"
-                }
-                
-                // 更新UI顯示測試結果
-                await MainActor.run {
-                    testResultMessage = resultMessage
-                    showTestResult = true
-                    isTestingDb = false
-                }
-            } catch {
-                var errorMessage = "測試失敗: \(error.localizedDescription)"
-                
-                // 處理不同類型的錯誤
-                if let apiError = error as? APIError {
-                    errorMessage = "API錯誤: 代碼 \(apiError.code), 訊息: \(apiError.message)"
-                    
-                    // 提供故障排除建議
-                    switch apiError.code {
-                    case 1:
-                        errorMessage += "\n\n請檢查您的網絡連接並確保離線模式已關閉"
-                    case 3:
-                        errorMessage += "\n\n請求超時，服務器可能無法回應，請稍後再試"
-                    case 4:
-                        errorMessage += "\n\n無法連接到服務器，請確認服務器地址正確且服務器正在運行"
-                    case 400...499:
-                        errorMessage += "\n\n請求錯誤，請檢查API參數設置"
-                    case 500...599:
-                        errorMessage += "\n\n服務器內部錯誤，請聯繫後端開發人員"
-                    default:
-                        errorMessage += "\n\n請嘗試重新啟動應用程序或檢查API配置"
-                    }
-                } else if let urlError = error as? URLError {
-                    errorMessage = "連接錯誤: \(urlError.localizedDescription)"
-                    
-                    switch urlError.code {
-                    case .timedOut:
-                        errorMessage += "\n\n連接超時，請檢查網絡狀態或服務器回應時間"
-                    case .notConnectedToInternet:
-                        errorMessage += "\n\n網絡未連接，請檢查網絡設置"
-                    case .cannotFindHost, .cannotConnectToHost:
-                        errorMessage += "\n\n無法連接到服務器，請檢查服務器地址是否正確"
-                    default:
-                        errorMessage += "\n\n請檢查您的網絡連接"
-                    }
-                }
-                
-                print(errorMessage)
-                
-                // 更新UI顯示錯誤信息
-                await MainActor.run {
-                    testResultMessage = errorMessage
-                    showTestResult = true
-                    isTestingDb = false
-                }
-            }
         }
     }
     
