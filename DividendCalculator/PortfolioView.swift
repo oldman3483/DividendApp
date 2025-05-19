@@ -138,8 +138,7 @@ struct PortfolioView: View {
     let bankName: String
     
     //服務
-    private let stockValueService = StockValueService.shared
-    
+    private let portfolioManager = PortfolioManager.shared
     
     // 定義股票類型枚舉
     enum StockType: String, CaseIterable {
@@ -160,21 +159,16 @@ struct PortfolioView: View {
     }
     
     
-    // 替換原有的計算屬性
     private func getBankStocks() -> [Stock] {
-        stocks.filter { $0.bankId == bankId }
+        return PortfolioManager.shared.getStocksForBank(bankId: bankId, allStocks: stocks)
     }
-    
+
     private func getRegularInvestments() -> [WeightedStockInfo] {
-        getBankStocks()
-            .filter { $0.regularInvestment != nil }
-            .calculateWeightedAverage(forBankId: bankId)
+        return PortfolioManager.shared.getWeightedRegularInvestments(bankId: bankId, allStocks: stocks)
     }
-    
+
     private func getNormalStocks() -> [WeightedStockInfo] {
-        getBankStocks()
-            .filter { $0.regularInvestment == nil }
-            .calculateWeightedAverage(forBankId: bankId)
+        return PortfolioManager.shared.getWeightedNormalStocks(bankId: bankId, allStocks: stocks)
     }
     
     private func calculateTotalAnnualDividend() -> Double {
@@ -190,7 +184,7 @@ struct PortfolioView: View {
     }
     
     private func calculateTotalInvestment() -> Double {
-        return stockValueService.calculateTotalInvestment(for: getBankStocks())
+        return portfolioManager.calculateTotalInvestment(for: getBankStocks())
     }
     
     
@@ -450,43 +444,21 @@ struct PortfolioView: View {
     
     
     private func updatePortfolioMetrics() async {
-        // 獲取該銀行的股票
-        let bankStocks = stocks.filter { $0.bankId == bankId }
-        
-        // 獲取價格數據
-        let currentPrices = await stockValueService.getCurrentPrices(for: bankStocks)
-        let previousPrices = await stockValueService.getPreviousDayPrices(for: bankStocks)
-        
-        // 計算總市值
-        let totalValue = await stockValueService.calculateTotalValue(for: bankStocks, currentPrices: currentPrices)
-        
-        // 計算總投資成本
-        let totalInvestment = stockValueService.calculateTotalInvestment(for: bankStocks)
-        
-        // 計算當日損益和漲跌幅
-        let (dailyChange, dailyChangePercentage) = stockValueService.calculateDailyChange(
-            for: bankStocks,
-            currentPrices: currentPrices,
-            previousPrices: previousPrices
+        // 使用 PortfolioManager 獲取投資組合指標
+        let metrics = await PortfolioManager.shared.getBankPortfolioMetrics(
+            bankId: bankId,
+            allStocks: stocks
         )
         
-        // 計算總報酬和報酬率
-        let totalProfitLoss = totalValue - totalInvestment
-        let totalROI = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0
-        
-        // 計算年化股利和股利率
-        let totalAnnualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
-        let dividendYield = totalValue > 0 ? (totalAnnualDividend / totalValue) * 100 : 0
-        
-        // 更新狀態
+        // 更新 UI
         await MainActor.run {
-            self.portfolioMetrics.totalValue = totalValue
-            self.portfolioMetrics.dailyChange = dailyChange
-            self.portfolioMetrics.dailyChangePercentage = dailyChangePercentage
-            self.portfolioMetrics.totalProfitLoss = totalProfitLoss
-            self.portfolioMetrics.totalROI = totalROI
-            self.portfolioMetrics.totalAnnualDividend = totalAnnualDividend
-            self.portfolioMetrics.dividendYield = dividendYield
+            self.portfolioMetrics.totalValue = metrics.totalValue
+            self.portfolioMetrics.dailyChange = metrics.dailyChange
+            self.portfolioMetrics.dailyChangePercentage = metrics.dailyChangePercentage
+            self.portfolioMetrics.totalProfitLoss = metrics.totalProfitLoss
+            self.portfolioMetrics.totalROI = metrics.totalROI
+            self.portfolioMetrics.totalAnnualDividend = metrics.annualDividend
+            self.portfolioMetrics.dividendYield = metrics.dividendYield
         }
     }
 }

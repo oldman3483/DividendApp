@@ -28,8 +28,8 @@ struct InvestmentOverviewView: View {
     private let analysisTypes = ["amount", "yield"]
     private let viewModes = ["overview", "allocation", "monthly", "growth", "risk"]
     private let stockService = LocalStockService()
-    private let stockValueService = StockValueService.shared
-    
+    private let portfolioManager = PortfolioManager.shared
+
     // 在 InvestmentOverviewView 結構體中添加這個計算屬性
     private var selectedContentView: some View {
         Group {
@@ -289,13 +289,13 @@ struct InvestmentOverviewView: View {
         let relevantStocks = stocks.filter { $0.purchaseDate >= startDate && $0.purchaseDate <= endDate }
         
         // 獲取當前價格數據
-        currentPrices = await stockValueService.getCurrentPrices(for: stocks)
+        currentPrices = await portfolioManager.getCurrentPrices(for: stocks)
         
         // 計算總投資成本
-        investmentMetrics.totalInvestment = stockValueService.calculateTotalInvestment(for: relevantStocks, before: endDate)
+        investmentMetrics.totalInvestment = portfolioManager.calculateTotalInvestment(for: relevantStocks, before: endDate)
         
         // 計算年化股利
-        investmentMetrics.annualDividend = stockValueService.calculateAnnualDividend(for: relevantStocks, before: endDate)
+        investmentMetrics.annualDividend = portfolioManager.calculateAnnualDividend(for: relevantStocks, before: endDate)
         
         // 計算平均殖利率
         investmentMetrics.averageYield = investmentMetrics.totalInvestment > 0 ?
@@ -377,20 +377,20 @@ struct InvestmentOverviewView: View {
             let relevantStocks = stocks.filter { $0.purchaseDate <= currentDate }
             
             // 計算該日期的總投資成本
-            let totalInvestment = stockValueService.calculateTotalInvestment(for: relevantStocks, before: currentDate)
+            let totalInvestment = portfolioManager.calculateTotalInvestment(for: relevantStocks, before: currentDate)
             
             // 計算該日期的年化股利
-            let annualDividend = stockValueService.calculateAnnualDividend(for: relevantStocks, before: currentDate)
+            let annualDividend = portfolioManager.calculateAnnualDividend(for: relevantStocks, before: currentDate)
             
             // 獲取該日期的當前價格
-            let prices = await stockValueService.getCurrentPrices(for: relevantStocks, on: currentDate)
-            
+            _ = await portfolioManager.getCurrentPrices(for: relevantStocks, on: currentDate)
+
             // 計算一般持股和定期定額的股利
             let normalStocks = relevantStocks.filter { $0.regularInvestment == nil }
             let regularStocks = relevantStocks.filter { $0.regularInvestment != nil }
             
-            let normalDividend = stockValueService.calculateAnnualDividend(for: normalStocks, before: currentDate)
-            let regularDividend = stockValueService.calculateAnnualDividend(for: regularStocks, before: currentDate)
+            let normalDividend = portfolioManager.calculateAnnualDividend(for: normalStocks, before: currentDate)
+            let regularDividend = portfolioManager.calculateAnnualDividend(for: regularStocks, before: currentDate)
             
             // 計算殖利率
             let yield = totalInvestment > 0 ? (annualDividend / totalInvestment) * 100 : 0
@@ -423,7 +423,7 @@ struct InvestmentOverviewView: View {
         // 將相同股票的一般持股和定期定額合併計算
         let combinedStocks = Dictionary(grouping: relevantStocks, by: { $0.symbol })
             .map { (symbol, stocks) -> (String, Double) in
-                let totalAnnualDividend = stockValueService.calculateAnnualDividend(for: stocks, before: endDate)
+                let totalAnnualDividend = portfolioManager.calculateAnnualDividend(for: stocks, before: endDate)
                 return (symbol, totalAnnualDividend)
             }
         
@@ -533,14 +533,14 @@ struct InvestmentOverviewView: View {
         let relevantStocks = stocks.filter { $0.purchaseDate >= startDate && $0.purchaseDate <= endDate }
         
         // 使用 StockValueService 計算總市值
-        let totalValue = await stockValueService.calculateTotalValue(
+        let totalValue = await portfolioManager.calculateTotalValue(
             for: relevantStocks,
             currentPrices: currentPrices,
             date: endDate
         )
         
         // 計算總投資成本
-        let totalInvestment = stockValueService.calculateTotalInvestment(for: relevantStocks, before: endDate)
+        let totalInvestment = portfolioManager.calculateTotalInvestment(for: relevantStocks, before: endDate)
         
         // 計算總報酬
         investmentMetrics.performanceMetrics.totalReturn = totalValue - totalInvestment
@@ -573,7 +573,7 @@ struct InvestmentOverviewView: View {
     // 時間加權報酬率 - 使用 StockValueService
     private func calculateTimeWeightedReturn(relevantStocks: [Stock]) async -> Double {
         // 獲取當前價格
-        let prices = await stockValueService.getCurrentPrices(for: relevantStocks, on: endDate)
+        let prices = await portfolioManager.getCurrentPrices(for: relevantStocks, on: endDate)
         
         // 簡化版實現
         let totalReturn = relevantStocks.reduce(0.0) { total, stock in
@@ -624,7 +624,7 @@ struct InvestmentOverviewView: View {
         ]
         
         // 獲取當前價格
-        let currentPrices = await stockValueService.getCurrentPrices(for: relevantStocks, on: endDate)
+        let currentPrices = await portfolioManager.getCurrentPrices(for: relevantStocks, on: endDate)
         
         // 計算各產業投資額
         var industryAmounts: [String: Double] = [:]
@@ -634,7 +634,7 @@ struct InvestmentOverviewView: View {
             guard let currentPrice = currentPrices[stock.symbol] else { continue }
             
             // 使用 StockValueService 計算股票市值
-            let stockValue = await stockValueService.calculateTotalValue(
+            let stockValue = await portfolioManager.calculateTotalValue(
                 for: [stock],
                 currentPrices: [stock.symbol: currentPrice],
                 date: endDate
@@ -709,10 +709,10 @@ struct InvestmentOverviewView: View {
                     // 使用 StockValueService 計算股利
                     if stock.regularInvestment == nil {
                         // 一般持股股利
-                        normalDividend += stockValueService.calculateAnnualDividend(for: [stock], before: date) / Double(stock.frequency)
+                        normalDividend += portfolioManager.calculateAnnualDividend(for: [stock], before: date) / Double(stock.frequency)
                     } else {
                         // 定期定額股利
-                        regularDividend += stockValueService.calculateAnnualDividend(for: [stock], before: date) / Double(stock.frequency)
+                        regularDividend += portfolioManager.calculateAnnualDividend(for: [stock], before: date) / Double(stock.frequency)
                     }
                 }
             }
@@ -769,7 +769,7 @@ struct InvestmentOverviewView: View {
                         let yearFactor = Double(year - startYear) / 5.0 // 用於模擬增長
                         
                         // 基礎年度股利（根據當前年化股利估算）
-                        let baseDividend = stockValueService.calculateAnnualDividend(for: stocks) * (0.7 + yearFactor * 0.3)
+                        let baseDividend = portfolioManager.calculateAnnualDividend(for: stocks) * (0.7 + yearFactor * 0.3)
                         
                         // 添加一些隨機波動
                         let randomFactor = 1.0 + Double.random(in: -0.05...0.05)

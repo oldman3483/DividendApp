@@ -3,7 +3,7 @@
 //  DividendCalculator
 //
 //  Created by Heidie Lee on 2025/1/31.
-//
+// 
 
 import SwiftUI
 
@@ -20,8 +20,8 @@ struct BankListView: View {
     @State private var showingErrorAlert = false
     @State private var portfolioMetrics = PortfolioMetrics()
     
-    private let stockService = LocalStockService()
-    
+    private let portfolioManager = PortfolioManager.shared
+
     // 投資組合指標結構
     private struct PortfolioMetrics {
         var totalValue: Double = 0
@@ -225,46 +225,21 @@ struct BankListView: View {
     
     // MARK: - Helper Methods
     private func updatePortfolioMetrics() async {
-        var metrics = PortfolioMetrics()
-        
-        // 篩選出屬於用戶所有銀行的股票
-        let bankStocks = stocks.filter { stock in
-            banks.contains { bank in
-                bank.id == stock.bankId
-            }
-        }
-        
-        // 使用 StockValueService 獲取當前價格和前一日價格
-        let stockValueService = StockValueService.shared
-        let currentPrices = await stockValueService.getCurrentPrices(for: bankStocks)
-        let previousPrices = await stockValueService.getPreviousDayPrices(for: bankStocks)
-        
-        // 計算總市值
-        metrics.totalValue = await stockValueService.calculateTotalValue(for: bankStocks, currentPrices: currentPrices)
-        
-        // 計算總投資成本
-        let totalInvestment = stockValueService.calculateTotalInvestment(for: bankStocks)
-        
-        // 計算當日損益和漲跌幅
-        let (dailyChange, dailyChangePercentage) = stockValueService.calculateDailyChange(
-            for: bankStocks,
-            currentPrices: currentPrices,
-            previousPrices: previousPrices
+        // 使用 PortfolioManager 獲取所有銀行的彙總指標
+        let metrics = await PortfolioManager.shared.getMultiBanksPortfolioMetrics(
+            banks: banks,
+            allStocks: stocks
         )
-        metrics.dailyChange = dailyChange
-        metrics.dailyChangePercentage = dailyChangePercentage
         
-        // 計算總報酬和報酬率
-        metrics.totalProfitLoss = metrics.totalValue - totalInvestment
-        metrics.totalROI = totalInvestment > 0 ? (metrics.totalProfitLoss / totalInvestment) * 100 : 0
-        
-        // 計算年化股利和股利率
-        metrics.totalAnnualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
-        metrics.dividendYield = metrics.totalValue > 0 ? (metrics.totalAnnualDividend / metrics.totalValue) * 100 : 0
-        
-        // 在主線程更新UI
+        // 將 BankPortfolioMetrics 轉換為本地 PortfolioMetrics
         await MainActor.run {
-            self.portfolioMetrics = metrics
+            self.portfolioMetrics.totalValue = metrics.totalValue
+            self.portfolioMetrics.dailyChange = metrics.dailyChange
+            self.portfolioMetrics.dailyChangePercentage = metrics.dailyChangePercentage
+            self.portfolioMetrics.totalProfitLoss = metrics.totalProfitLoss
+            self.portfolioMetrics.totalROI = metrics.totalROI
+            self.portfolioMetrics.totalAnnualDividend = metrics.annualDividend
+            self.portfolioMetrics.dividendYield = metrics.dividendYield
         }
     }
     

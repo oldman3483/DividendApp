@@ -350,7 +350,7 @@ struct AddStockView: View {
     private func loadStockPrice() async {
         isPriceLoading = true
         
-        await loadDataFromAPI(
+        _ = await loadDataFromAPI(
             apiCall: { try await APIService.shared.getDividendData(symbol: initialSymbol) },
             processData: { dividendResponse -> Double? in
                 let record = findNearestDividendRecord(records: dividendResponse.data, date: purchaseDate)

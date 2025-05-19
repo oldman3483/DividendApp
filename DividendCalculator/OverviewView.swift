@@ -27,8 +27,8 @@ struct OverviewView: View {
     @State private var currentPrices: [String: Double] = [:]
 
     // 服務
-    private let stockValueService = StockValueService.shared
-    
+    private let portfolioManager = PortfolioManager.shared
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -94,11 +94,11 @@ struct OverviewView: View {
         isLoading = true
         
         // 使用統一的服務載入數據
-        currentPrices = await stockValueService.getCurrentPrices(for: stocks)
-        totalValue = await stockValueService.calculateTotalValue(for: stocks, currentPrices: currentPrices)
-        annualDividend = stockValueService.calculateAnnualDividend(for: stocks)
-        roi = await stockValueService.calculateROI(for: stocks, currentPrices: currentPrices)
-        dividendYield = await stockValueService.calculateDividendYield(for: stocks, currentPrices: currentPrices)
+        currentPrices = await portfolioManager.getCurrentPrices(for: stocks)
+        totalValue = await portfolioManager.calculateTotalValue(for: stocks, currentPrices: currentPrices)
+        annualDividend = portfolioManager.calculateAnnualDividend(for: stocks)
+        roi = await portfolioManager.calculateTotalROI(for: stocks, currentPrices: currentPrices)
+        dividendYield = totalValue > 0 ? (annualDividend / totalValue) * 100 : 0
         
         isLoading = false
     }
@@ -417,7 +417,7 @@ struct OverviewView: View {
     }
 }
 
-// BankCardPreview 使用統一的 StockValueService
+// BankCardPreview 使用統一的 PortfolioManager
 struct BankCardPreview: View {
     @Binding var banks: [Bank]
     @Binding var stocks: [Stock]
@@ -430,14 +430,6 @@ struct BankCardPreview: View {
     @State private var totalValue: Double = 0
     @State private var annualDividend: Double = 0
     @State private var isLoading: Bool = true
-    
-    // 服務
-    private let stockValueService = StockValueService.shared
-    
-    // 該銀行的股票
-    private var bankStocks: [Stock] {
-        stocks.filter { $0.bankId == bank.id }
-    }
     
     var body: some View {
         NavigationLink(destination: PortfolioView(
@@ -462,7 +454,7 @@ struct BankCardPreview: View {
                         .foregroundColor(.blue)
                     
                     HStack {
-                        Text("\(bankStocks.count) 支股票")
+                        Text("\(bank.getStocks(from: stocks).count) 支股票")
                             .font(.system(size: 12))
                             .foregroundColor(.gray)
                         
@@ -495,18 +487,11 @@ struct BankCardPreview: View {
     private func loadBankData() async {
         isLoading = true
         
-        // 使用現有價格或獲取新價格
-        let prices = !currentPrices.isEmpty ? currentPrices :
-            await stockValueService.getCurrentPrices(for: bankStocks)
+        // 計算總市值
+        totalValue = await bank.calculateBankTotalValue(allStocks: stocks)
         
-        // 計算市值和股利
-        totalValue = await stockValueService.calculateBankTotalValue(
-            stocks: stocks,
-            bankId: bank.id,
-            currentPrices: prices
-        )
-        
-        annualDividend = stockValueService.calculateAnnualDividend(for: bankStocks)
+        // 計算年化股利
+        annualDividend = bank.calculateAnnualDividend(allStocks: stocks)
         
         isLoading = false
     }

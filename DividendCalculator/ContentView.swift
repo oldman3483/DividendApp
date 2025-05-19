@@ -397,42 +397,29 @@ struct ContentView: View {
             return
         }
         
-        do {
-            // 嘗試從API獲取數據
-            // 這裡可以添加對連接後端的測試
-            let baseURL = "https://postgres-1-148949302162.asia-east1.run.app"
-            
-            var isServerConnected = false
-            let semaphore = DispatchSemaphore(value: 0)
-            
+        // 嘗試從API獲取數據
+        let baseURL = "https://postgres-1-148949302162.asia-east1.run.app"
+        
+        // 使用 async/await 形式進行連接檢查
+        let isServerConnected = await withCheckedContinuation { continuation in
             networkMonitor.checkServerConnection(urlString: baseURL) { isConnected, _ in
-                isServerConnected = isConnected
-                semaphore.signal()
+                continuation.resume(returning: isConnected)
             }
-            
-            // 等待連接檢查完成
-            _ = semaphore.wait(timeout: .now() + 5)
-            
-            if !isServerConnected {
-                // 如果無法連接後端，使用本地數據
-                loadLocalData()
-                // 顯示離線指示器
-                showOfflineIndicator = true
-                return
-            }
-            
-            // 暫時先加載本地數據
+        }
+        
+        if !isServerConnected {
+            // 如果無法連接後端，使用本地數據
             loadLocalData()
-            
-            // 更新股票實時數據
-            await updateStocksWithLiveData()
-        } catch {
-            // 發生錯誤時，改為加載本地數據
-            loadLocalData()
-            
             // 顯示離線指示器
             showOfflineIndicator = true
+            return
         }
+        
+        // 暫時先加載本地數據
+        loadLocalData()
+        
+        // 更新股票實時數據
+        await updateStocksWithLiveData()
     }
     
     // 更新股票實時數據
