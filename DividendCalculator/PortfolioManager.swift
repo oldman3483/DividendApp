@@ -456,6 +456,12 @@ class PortfolioManager {
         
         return (dailyChange, percentage)
     }
+    
+    //使用 CustomRangeMetricsService 處理特定日期範圍
+    func getMetricsForDateRange(startDate: Date, endDate: Date, stocks: [Stock]) async -> InvestmentMetrics {
+        let metricsService = CustomRangeMetricsService(stocks: stocks, stockService: stockService)
+        return await metricsService.calculateMetrics(startDate: startDate, endDate: endDate)
+    }
 }
 
 /// 銀行投資組合指標結構

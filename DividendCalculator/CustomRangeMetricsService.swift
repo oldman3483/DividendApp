@@ -20,13 +20,18 @@ class CustomRangeMetricsService {
     // 計算自定義日期範圍的投資指標
     func calculateMetrics(startDate: Date, endDate: Date) async -> InvestmentMetrics {
         var metrics = InvestmentMetrics()
+        let portfolioManager = PortfolioManager.shared
+        
+        // 篩選相關股票
+        let relevantStocks = calculateFilteredStocks(startDate: startDate, endDate: endDate)
+
         
         // 1. 計算總投資成本（篩選在自定義範圍內購買的股票）
-        metrics.totalInvestment = calculateTotalInvestment(startDate: startDate, endDate: endDate)
-        
+        metrics.totalInvestment = portfolioManager.calculateTotalInvestment(for: relevantStocks)
+
         // 2. 計算年化股利
-        metrics.annualDividend = calculateAnnualDividend(startDate: startDate, endDate: endDate)
-        
+        metrics.annualDividend = portfolioManager.calculateAnnualDividend(for: relevantStocks)
+
         // 3. 計算平均殖利率
         metrics.averageYield = metrics.totalInvestment > 0 ? (metrics.annualDividend / metrics.totalInvestment) * 100 : 0
         
@@ -35,7 +40,6 @@ class CustomRangeMetricsService {
         
         // 5. 計算趨勢數據
         metrics.trendData = await calculateTrendData(startDate: startDate, endDate: endDate)
-        
         // 6. 獲取績效排行
         metrics.topPerformingStocks = getTopPerformingStocks(startDate: startDate, endDate: endDate)
         
@@ -75,40 +79,13 @@ class CustomRangeMetricsService {
     // 計算總投資成本
     private func calculateTotalInvestment(startDate: Date, endDate: Date) -> Double {
         let relevantStocks = calculateFilteredStocks(startDate: startDate, endDate: endDate)
-        
-        return relevantStocks.reduce(0) { total, stock in
-            // 一般持股投資成本
-            let normalCost = Double(stock.shares) * (stock.purchasePrice ?? 0)
-            
-            // 定期定額投資成本
-            let regularCost = calculateExecutedTransactions(stock: stock, startDate: startDate, endDate: endDate)
-                .reduce(0) { sum, transaction in sum + transaction.amount }
-            
-            return total + normalCost + regularCost
-        }
+        return PortfolioManager.shared.calculateTotalInvestment(for: relevantStocks)
     }
     
     // 計算年化股利
     private func calculateAnnualDividend(startDate: Date, endDate: Date) -> Double {
-        stocks
-            .filter { $0.purchaseDate <= endDate } // 只考慮到結束日期前購買的股票
-            .reduce(0) { total, stock in
-                // 計算一般持股的年化股利
-                let normalDividend = Double(stock.shares) * stock.dividendPerShare * Double(stock.frequency)
-                
-                // 計算定期定額的年化股利（已執行的交易且在時間範圍內）
-                let regularShares = stock.regularInvestment?.transactions?
-                    .filter {
-                        $0.isExecuted &&
-                        $0.date <= endDate
-                    }
-                    .reduce(0) { sum, transaction in
-                        sum + transaction.shares
-                    } ?? 0
-                let regularDividend = Double(regularShares) * stock.dividendPerShare * Double(stock.frequency)
-                
-                return total + normalDividend + regularDividend
-            }
+        let relevantStocks = stocks.filter { $0.purchaseDate <= endDate } // 只考慮到結束日期前購買的股票
+        return PortfolioManager.shared.calculateAnnualDividend(for: relevantStocks)
     }
     
     // 計算持股數量（不同的股票代號）
@@ -740,16 +717,7 @@ class CustomRangeMetricsService {
     
     // 輔助方法 - 獲取當前股價
     private func getCurrentPrices() async -> [String: Double] {
-        var prices: [String: Double] = [:]
-        
-        // 獲取每支股票的最新價格
-        for stock in stocks {
-            if let price = await stockService.getStockPrice(symbol: stock.symbol, date: Date()) {
-                prices[stock.symbol] = price
-            }
-        }
-        
-        return prices
+        return await PortfolioManager.shared.getCurrentPrices(for: stocks)
     }
     
     // 輔助方法 - 計算時間加權報酬率
