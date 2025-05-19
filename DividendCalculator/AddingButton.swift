@@ -1,5 +1,5 @@
 //
-//  AddBankButton.swift
+//  AddingButton.swift
 //  DividendCalculator
 //
 //  Created by Heidie Lee on 2025/2/4.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct AddBankButton: View {
+struct AddingButton: View {
     let action: () -> Void
     
     var body: some View {

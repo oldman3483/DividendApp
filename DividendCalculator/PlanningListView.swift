@@ -39,7 +39,7 @@ struct PlanningListView: View {
                 }
                 
                 // 新增規劃按鈕
-                AddBankButton(action: { showingAddPlan = true })
+                AddingButton(action: { showingAddPlan = true })
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
