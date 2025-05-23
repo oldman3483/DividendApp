@@ -246,40 +246,32 @@ class PortfolioManager {
     ///   - allStocks: 所有股票
     /// - Returns: 銀行投資組合指標
     func getBankPortfolioMetrics(bankId: UUID, allStocks: [Stock]) async -> BankPortfolioMetrics {
+        
+        // 需要更新數據時才重新計算
         let bankStocks = getStocksForBank(bankId: bankId, allStocks: allStocks)
         
         let currentPrices = await getCurrentPrices(for: bankStocks)
         let previousPrices = await getPreviousDayPrices(for: bankStocks)
         
-        // 計算總市值 - 使用本地計算方法
         let totalValue = await calculateTotalValue(for: bankStocks, currentPrices: currentPrices)
-        
-        // 計算總投資成本
         let totalInvestment = calculateTotalInvestment(for: bankStocks)
-        
-        // 計算年化股利
         let annualDividend = calculateAnnualDividend(for: bankStocks)
         
-        // 計算當日損益和漲跌幅 - 使用本地計算方法
         let (dailyChange, dailyChangePercentage) = calculateDailyChange(
             for: bankStocks,
             currentPrices: currentPrices,
             previousPrices: previousPrices
         )
         
-        // 計算總報酬和報酬率
         let totalProfitLoss = totalValue - totalInvestment
         let totalROI = totalInvestment > 0 ? (totalProfitLoss / totalInvestment) * 100 : 0
-        
-        // 計算股利率
         let dividendYield = totalValue > 0 ? (annualDividend / totalValue) * 100 : 0
         
-        // 計算股票數量
         let stockCount = Set(bankStocks.map { $0.symbol }).count
         let regularInvestmentCount = getRegularInvestmentsForBank(bankId: bankId, allStocks: allStocks).count
         let normalStockCount = getNormalStocksForBank(bankId: bankId, allStocks: allStocks).count
         
-        return BankPortfolioMetrics(
+        let metrics = BankPortfolioMetrics(
             totalValue: totalValue,
             totalInvestment: totalInvestment,
             totalProfitLoss: totalProfitLoss,
@@ -292,6 +284,8 @@ class PortfolioManager {
             regularInvestmentCount: regularInvestmentCount,
             normalStockCount: normalStockCount
         )
+        
+        return metrics
     }
     
     // MARK: - 股票處理方法
@@ -465,7 +459,7 @@ class PortfolioManager {
 }
 
 /// 銀行投資組合指標結構
-struct BankPortfolioMetrics {
+struct BankPortfolioMetrics: Codable {
     let totalValue: Double
     let totalInvestment: Double
     let totalProfitLoss: Double
@@ -478,4 +472,25 @@ struct BankPortfolioMetrics {
     var stockCount: Int
     var regularInvestmentCount: Int
     var normalStockCount: Int
+    
+    // 添加時間戳用於緩存驗證
+    let calculatedAt: Date
+    
+    init(totalValue: Double, totalInvestment: Double, totalProfitLoss: Double,
+         totalROI: Double, annualDividend: Double, dividendYield: Double,
+         dailyChange: Double, dailyChangePercentage: Double,
+         stockCount: Int, regularInvestmentCount: Int, normalStockCount: Int) {
+        self.totalValue = totalValue
+        self.totalInvestment = totalInvestment
+        self.totalProfitLoss = totalProfitLoss
+        self.totalROI = totalROI
+        self.annualDividend = annualDividend
+        self.dividendYield = dividendYield
+        self.dailyChange = dailyChange
+        self.dailyChangePercentage = dailyChangePercentage
+        self.stockCount = stockCount
+        self.regularInvestmentCount = regularInvestmentCount
+        self.normalStockCount = normalStockCount
+        self.calculatedAt = Date()
+    }
 }

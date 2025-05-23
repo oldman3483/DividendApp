@@ -65,17 +65,31 @@ struct BankListView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if !banks.isEmpty {
-                        Button(isEditing ? "完成" : "編輯") {
-                            withAnimation {
-                                isEditing.toggle()
+                    HStack {
+                        // 添加刷新按鈕
+                        Button(action: {
+                            Task {
+                                await forceRefreshData()
                             }
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                                .foregroundColor(.white)
                         }
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
+                        if !banks.isEmpty {
+                            Button(isEditing ? "完成" : "編輯") {
+                                withAnimation {
+                                    isEditing.toggle()
+                                }
+                            }
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                        }
                     }
                 }
             }
+        }
+        .refreshable {
+            await forceRefreshData()
         }
         .sheet(isPresented: $showingAddBank) {
             AddBankView(banks: $banks)
@@ -104,6 +118,11 @@ struct BankListView: View {
     }
     
     // MARK: - 子視圖
+    
+    // 強制刷新數據
+    private func forceRefreshData() async {
+        await updatePortfolioMetrics()
+    }
     
     // 投資組合總覽視圖
     private var bankListSummaryView: some View {

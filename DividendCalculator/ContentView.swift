@@ -104,6 +104,9 @@ struct ContentView: View {
             LoginView()
         } else {
             mainContent
+                .onAppear {
+                    setupInitialState()
+                }
                 .overlay {
                     if isLoading {
                         ProgressView("資料讀取中...")
@@ -195,6 +198,9 @@ struct ContentView: View {
     private func setupInitialState() {
         setupAppearance()
         
+        // 清理舊的價格緩存
+        stockService.cleanOldPriceCache()
+        
         // 重置價格緩存
         GlobalStockPriceService.shared.clearCache()
         
@@ -230,6 +236,7 @@ struct ContentView: View {
             
             isLoading = false
         }
+        
         // 添加離線模式變更的通知觀察者
         NotificationCenter.default.addObserver(
             forName: Notification.Name("OfflineModeChanged"),

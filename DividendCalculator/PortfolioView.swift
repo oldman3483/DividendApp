@@ -132,6 +132,10 @@ struct PortfolioView: View {
     @State private var showingSearchView = false
     @State private var selectedStockType: StockType = .all
     @State private var portfolioMetrics = PortfolioMetrics()
+    @State private var cachedTotalAnnualDividend: Double = 0
+    @State private var cachedTotalInvestment: Double = 0
+    @State private var cachedStockCount: Int = 0
+    @State private var dataInitialized = false
     
     
     let bankId: UUID
@@ -337,11 +341,11 @@ struct PortfolioView: View {
                 List {
                     // 總覽區塊
                     PortfolioSummarySection(
-                        stockCount: getStockCount(),
-                        totalAnnualDividend: calculateTotalAnnualDividend(),
-                        totalInvestment: calculateTotalInvestment(),
-                        dailyChange: calculateDailyChange().0,
-                        dailyChangePercentage: calculateDailyChange().1
+                        stockCount: cachedStockCount,
+                        totalAnnualDividend: cachedTotalAnnualDividend,
+                        totalInvestment: cachedTotalInvestment,
+                        dailyChange: portfolioMetrics.dailyChange,
+                        dailyChangePercentage: portfolioMetrics.dailyChangePercentage
                     )
                     
                     if getRegularInvestments().isEmpty && getNormalStocks().isEmpty {
@@ -404,6 +408,12 @@ struct PortfolioView: View {
                 showingSearchView = true
             })
         }
+        .onAppear {
+            if !dataInitialized {
+                initializeCachedData()
+                dataInitialized = true
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -432,22 +442,28 @@ struct PortfolioView: View {
         .task {
             await updatePortfolioMetrics()
         }
+        // 添加下拉刷新功能
+        .refreshable {
+            await forceRefresh()
+        }
     }
     
-    // 計算當日損益及百分比 - 簡化版本
-    private func calculateDailyChange() -> (Double, Double) {
-        return (portfolioMetrics.dailyChange, portfolioMetrics.dailyChangePercentage)
+    // 初始化緩存數據
+    private func initializeCachedData() {
+        cachedTotalAnnualDividend = calculateTotalAnnualDividend()
+        cachedTotalInvestment = calculateTotalInvestment()
+        cachedStockCount = getStockCount()
     }
-    
-    
-    private func updatePortfolioMetrics() async {
-        // 使用 PortfolioManager 獲取投資組合指標
+        
+        
+        
+        // 強制更新指標
+    private func forceUpdateMetrics() async {
         let metrics = await PortfolioManager.shared.getBankPortfolioMetrics(
             bankId: bankId,
             allStocks: stocks
         )
         
-        // 更新 UI
         await MainActor.run {
             self.portfolioMetrics.totalValue = metrics.totalValue
             self.portfolioMetrics.dailyChange = metrics.dailyChange
@@ -456,7 +472,28 @@ struct PortfolioView: View {
             self.portfolioMetrics.totalROI = metrics.totalROI
             self.portfolioMetrics.totalAnnualDividend = metrics.annualDividend
             self.portfolioMetrics.dividendYield = metrics.dividendYield
+            
+            // 更新緩存值
+            self.cachedTotalAnnualDividend = metrics.annualDividend
+            self.cachedTotalInvestment = metrics.totalInvestment
+            self.cachedStockCount = metrics.stockCount
         }
+    }
+        
+        // 手動刷新
+    private func forceRefresh() async {
+        await forceUpdateMetrics()
+    }
+    
+    
+    
+    // 計算當日損益及百分比 - 簡化版本
+    private func calculateDailyChange() -> (Double, Double) {
+        return (portfolioMetrics.dailyChange, portfolioMetrics.dailyChangePercentage)
+    }
+    
+    private func updatePortfolioMetrics() async {
+        await forceUpdateMetrics()
     }
 }
     
